@@ -512,6 +512,6 @@ function redeem(
   - The contract must be approved to burn nUSD from the redeemer
   - Redeemer will receive cBTC to repay for the burnt nUSD, less the redemption fee
 
-**NOTE:** The actual amount of collateral received depends on the:
+**NOTE:** The actual amount of collateral received depends on:
 - Current collateral price
 - Redemption fee rate
