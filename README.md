@@ -59,13 +59,13 @@ Interest rates are specified in increments of 10 bips. Positions that share the 
 
 Once a position has been opened, users can adjust the position's interest rate based on their personal strategies or market conditions.
 
-Interest accrues on a per second basis on the debt amount within each position. The system charges the accumulated interest of an entire bucket (i.e., all the positions in the bucket) whenever an action is performed on the bucket. Accruing interest at a bucket level improves the efficiency of the system and ensures a more continuous collection of fees.
+Interest accrues on a per-second basis on the debt amount within each position. The system charges the accumulated interest of an entire bucket (i.e., all the positions in the bucket) whenever an action is performed on the bucket. Accruing interest at a bucket level improves the efficiency of the system and ensures a more continuous collection of fees.
 
 ## Opening Fee
 
-When creating a new position, an "opening fee" of 0.25% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. If a user reduces their interest rate they will be charged the remaining fee amount and a new opening fee will be applied on their outstanding debt. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
+When creating a new position, an "opening fee" of 0.2% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. If a user reduces their interest rate they will be charged the remaining fee amount and a new opening fee will be applied on their outstanding debt. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
 
-Repaying debt will trigger a pro-rata portion of the outstanding fee, calculated based on the amount being repaid. Increasing a position's debt will result in a 0.25% charge on the increase, which will be added to the outstanding fee amount.
+Repaying debt will trigger a pro-rata portion of the outstanding fee, calculated based on the amount being repaid. Increasing a position's debt will result in a 0.2% charge on the increase, which will be added to the outstanding fee amount.
 
 This mechanism is designed to discourage users from temporarily increasing their interest rates to avoid redemptions, which target lower interest rate buckets.
 
@@ -113,7 +113,7 @@ If the price of nUSD falls below \$1, arbitrageurs can buy nUSD on the open mark
 
 ## Ordering and Risk
 
-When redemptions occur, buckets are redemeed in order of buckets with the lowest interest rate to highest interest rate. Collateral is redeemed at 1:1, thereby paying off the associated debt. If a bucket no longer has any remaining collateral, the next lowest bucket will be redeemed against.
+When redemptions occur, buckets are redeemed in order of the buckets with the lowest interest rate to the highest interest rate. Collateral is redeemed at 1:1, thereby paying off the associated debt. If a bucket no longer has any remaining collateral, the next lowest bucket will be redeemed against.
 
 Within a bucket, redemptions are applied proportionally across all outstanding positions. The distribution of redemptions ensures that they are distributed fairly among borrowers offering the same interest rate.
 
@@ -187,14 +187,14 @@ Nectra also offers a “flash borrow” function, allowing users to atomically b
 
 Nectra employs partial liquidations to safeguard the system when a borrowing position's LTV reaches 90.9%. During such an event, nUSD is repaid to the system to reduce the outstanding debt, and a liquidation penalty is applied.
 
-The liquidator earns a share of this penalty, capped at $5 worth of cBTC, while the remainder of the fee is paid to the Savings Account module. 
+The liquidator earns a share of this penalty, capped at $10 worth of cBTC, while the remainder of the fee is paid to the Savings Account module. 
 
 **Calculating nUSD Required to Fix LTV**
 
 The nUSD required to pay for the liquidation can be provided from several sources and is calculated using the following formulas:
 
 $$
-\text{nUSDtoFixLTV} = \frac{\text{Debt} \times \text{IR} - \text{Collateral} \times \text{Price}}{\text{IR} - \text{100\%}}
+\text{nUSDtoFixLTV} = \frac{\text{Debt} \times \text{IR} - \text{Collateral} \times \text{Price}}{\text{IR} - \text{1}}
 $$
 
 Where:
@@ -228,7 +228,7 @@ $$
 \text{PenaltycBTC} = \frac{\text{PenaltynUSD} \times \text{IR}}{\text{Price}}
 $$
 
-The resulting cBTC penalty is divided into two parts when a liquidation occurs. 15% of the penalty is directed to the Savings Account module, and up to $5 worth of the 85% share is allocated to the liquidator. Any amount exceeding $5 will be sent to the Savings Account module.
+The resulting cBTC penalty is divided into two parts when a liquidation occurs. 10% of the penalty is directed to the Savings Account module, and up to $10 worth of the 90% share is allocated to the liquidator. Any amount exceeding $10 will be sent to the Savings Account module.
 
 ## Liquidation Functions
 
@@ -242,24 +242,24 @@ The Savings Account module can source nUSD from:
 - Idle nUSD deposited into the Savings Account
 - Temporarily withdrawing nUSD from Savings Account yield generation strategies
 
-After the liquidation, the underlying collateral is sold to return the system to its original state, in addition to fees received. The liquidation penalty is earned by the Savings Account Module. The cBTC reward received by the liquidator can be calculated as:
+After the liquidation, the underlying collateral is sold to return the system to its original state, in addition to the fees received. The liquidation penalty is earned by the Savings Account Module. The cBTC reward received by the liquidator can be calculated as:
 
 **Public Liquidations**
 
 Individuals can use their nUSD (or nUSD acquired through other sources) to perform liquidations. Users receive an equivalent amount of cBTC and a share of the liquidation penalty. The amount of cBTC received from a self-funded liquidation can be calculated using: 
 
 $$
-\text{cBTCReceived} = \frac{ \text{nUSDtoFixLTV}}{\text{Price}} + \text{PenaltycBTC} \times \mathrm{85%}
+\text{cBTCReceived} = \frac{ \text{nUSDtoFixLTV}}{\text{Price}} + \text{PenaltycBTC} \times 0.9
 $$
 
-While the liquidator will be fully reimbursed for their nUSD in the form of cBTC, the value of the cBTC reward they receive from the penalty cBTC is capped at $5.
+While the liquidator will be fully reimbursed for their nUSD in the form of cBTC, the value of the cBTC reward they receive from the penalty cBTC is capped at $10.
 
 **Flash and Liquidate**
 
 The "flash mint" function allows users to perform public liquidations without having the required nUSD. The acquired cBTC is then swapped for nUSD through a DEX to repay the borrowed amount. The liquidator's reward is a portion of the liquidation penalty, minus any DEX fees, slippage incurred during the cBTC-to-nUSD swap, and the flash mint fee. The remaining portion of the penalty is allocated to the Savings Account module. The liquidator's reward is calculated as:
 
 $$
-\text{cBTCReceived} = \text{PenaltycBTC}\times \text{85%}-\text{SwapLoss}-\text{FlashFee}
+\text{cBTCReceived} = \text{PenaltycBTC}\times \text{90%}-\text{SwapLoss}-\text{FlashFee}
 $$
 
 ## Socialized Liquidations
@@ -272,7 +272,7 @@ This debt-share distribution helps prevent cascading liquidation issues. Before 
 
 ## nUSD < $1
 
-Nectra's primary mechanism for supporting the nUSD price when it falls below $1 is redemptions. Redemptions creates a price floor, as market participants can profitably arbitrage the difference by purchasing undervalued nUSD and redeeming it for $1 worth of cBTC from the system, thus increasing the nUSD price back towards its peg.
+Nectra's primary mechanism for supporting the nUSD price when it falls below $1 is redemptions. Redemptions create a price floor, as market participants can profitably arbitrage the difference by purchasing undervalued nUSD and redeeming it for $1 worth of cBTC from the system, thus increasing the nUSD price back towards its peg.
 
 A period of high demand for redemptions also creates a second-order effect. Borrowers are incentivized to temporarily increase their interest rates to reduce their risk of redemption, and the redemption fees themselves rise with volume. Since the interest and redemption fees are streamed to the Savings Account module, users are further incentivized to acquire discounted nUSD on the market and deposit it into the treasury pool to capture a portion of these earnings. Doing so reduces the circulating supply of nUSD.
 
