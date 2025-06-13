@@ -2,7 +2,7 @@
 
 Nectra is a decentralized borrowing protocol allowing users to borrow nUSD (Nectra USD) against [Citrea](https://citrea.xyz) BTC (cBTC). 
 
-The nUSD token is a USD soft-pegged stablecoin over-collateralized with cBTC deposits. The Bitcoin collateral supports the floor price of the stablecoin through the ability to redeem nUSD for \$1 equivalent of cBTC directly. Protocol arbitrage enforces a ceiling on the nUSD price. 
+The nUSD token is a soft-pegged USD stablecoin, over-collateralized with cBTC deposits. The Bitcoin collateral supports the floor price of the stablecoin through the ability to redeem nUSD for \$1 equivalent of cBTC directly. Protocol arbitrage enforces a ceiling on the nUSD price.
 
 When creating a loan, termed a "position", users select their preferred annual interest rate. The position's interest rate determines whether it is redeemed against during a redemption, with positions paying a lower interest rate being redeemed first. 
 
@@ -59,11 +59,11 @@ Interest rates are specified in increments of 10 bips. Positions that share the 
 
 Once a position has been opened, users can adjust the position's interest rate based on their personal strategies or market conditions.
 
-Interest accrues on a per second basis on the debt amount within each position. The system charges the accumulated interest of an entire bucket (i.e., all the positions in the bucket) whenever an action is performed on the bucket. Updating interest rates at a bucket level improves the efficiency of operations in the system and ensures regular collection of interest in the system.
+Interest accrues on a per second basis on the debt amount within each position. The system charges the accumulated interest of an entire bucket (i.e., all the positions in the bucket) whenever an action is performed on the bucket. Accruing interest at a bucket level improves the efficiency of the system and ensures a more continuous collection of fees.
 
 ## Opening Fee
 
-When creating a new position, an "opening fee" of 0.25% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. Unless the opening fee has been fully paid, if the user reduces their interest rate the user will be charged the remaining amount and a new opening fee will be allocated. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
+When creating a new position, an "opening fee" of 0.25% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. If a user reduces their interest rate they will be charged the remaining fee amount and a new opening fee will be applied on their outstanding debt. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
 
 Repaying debt will trigger a pro-rata portion of the outstanding fee, calculated based on the amount being repaid. Increasing a position's debt will result in a 0.25% charge on the increase, which will be added to the outstanding fee amount.
 
