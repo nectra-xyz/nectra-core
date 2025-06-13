@@ -1,12 +1,12 @@
 # Nectra Core
 
-Nectra is a decentralized borrowing protocol that allows users to borrow nUSD (Nectra USD) against [Citrea](https://citrea.xyz) BTC (cBTC). 
+Nectra is a decentralized borrowing protocol allowing users to borrow nUSD (Nectra USD) against [Citrea](https://citrea.xyz) BTC (cBTC). 
 
-The nUSD token is a USD soft-pegged stablecoin that is over-collateralized with cBTC deposits. The Bitcoin collateral supports the floor price of the stablecoin through the ability to directly redeem nUSD for $1 equivalent of cBTC. Protocol arbitrage enforces a ceiling on the nUSD price. 
+The nUSD token is a USD soft-pegged stablecoin over-collateralized with cBTC deposits. The Bitcoin collateral supports the floor price of the stablecoin through the ability to redeem nUSD for \$1 equivalent of cBTC directly. Protocol arbitrage enforces a ceiling on the nUSD price. 
 
-When creating a loan, users select their preferred annual interest rate. Their interest rate determines the ordering of positions that are redeemed against, with positions paying a lower interest rate being redeemed first. 
+When creating a loan, termed a "position", users select their preferred annual interest rate. The position's interest rate determines whether it is redeemed against during a redemption, with positions paying a lower interest rate being redeemed first. 
 
-The protocol implements both partial and full liquidations to ensure that nUSD remains overcollateralized.
+The protocol implements partial and full liquidations to ensure that nUSD remains overcollateralized.
 
 Nectra’s core lending and stablecoin protocol is immutable once deployed and entirely permissionless. 
 
@@ -30,8 +30,8 @@ Nectra’s core lending and stablecoin protocol is immutable once deployed and e
   - [Liquidation Functions](#liquidation-functions)
   - [Socialized Liquidations](#socialized-liquidations)
 - [Stability Mechanisms](#stability-mechanisms)
-  - [nUSD < $1](#nusd--1)
-  - [nUSD > $1](#nusd--1)
+  - [nUSD < \$1](#nusd--1)
+  - [nUSD > \$1](#nusd--1)
 - [Contract Architecture](#contract-architecture)
   - [Core Contracts](#core-contracts)
   - [Supporting Contracts](#supporting-contracts)
@@ -45,25 +45,25 @@ Nectra’s core lending and stablecoin protocol is immutable once deployed and e
 
 # Borrowing
 
-Users are able to deposit cBTC into Nectra as collateral to borrow nUSD through over-collateralized loans. 
+Users can deposit cBTC into Nectra as collateral to borrow nUSD through over-collateralized loans. 
 
-When opening a position, the maximum loan-to-value (LTV) of a position is 83.3%. The liquidation LTV is 90.9%.
+The maximum Loan-to-Value (LTV) of a position is 83.3% when opening a position. The liquidation LTV is 90.9%.
 
-To close a position, users are required to repay the initial loan amount in full, in addition to any interest that has accrued.
+To close a position, users must repay the initial position debt amount in full, in addition to any accrued interest.
 
 ## User-Defined Interest Rate
 
-When opening a position, the user must specify the annual interest rate they prefer to pay.
+When opening a position, users must specify the annual interest rate they prefer to pay.
 
-Interest rates are specified in increments of 10 bips. Positions that share the same interest rate in the system are put into a “bucket”. Positions in the bucket can have varying collateralization ratios (c-ratios), reflecting the individual position’s level of collateral to debt ratio. The c-ratio is an indication of the health of the position. 
+Interest rates are specified in increments of 10 bips. Positions that share the same interest rate in the system are put into a “bucket”. Positions in the bucket can have varying collateralization ratios (c-ratios), reflecting the individual position’s level of collateral-to-debt ratio. The c-ratio is an indication of the health of the position. 
 
 Once a position has been opened, users can adjust the position's interest rate based on their personal strategies or market conditions.
 
-Interest accrues over time on the borrowed nUSD within each position. The accumulated interest of an entire bucket (i.e., all the positions in the bucket) is charged by the system whenever an action is performed on the bucket. Updating interest rates at a bucket level improves the efficiency of operations in the system and ensures regular collection of interest in the system.
+Interest accrues on a per second basis on the debt amount within each position. The system charges the accumulated interest of an entire bucket (i.e., all the positions in the bucket) whenever an action is performed on the bucket. Updating interest rates at a bucket level improves the efficiency of operations in the system and ensures regular collection of interest in the system.
 
 ## Opening Fee
 
-Upon creation of a new position, an "opening fee" of 0.25% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. Unless the opening fee has been fully paid, if the user reduces their interest rate the user will be charged the remaining amount and a new opening fee will be allocated. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
+When creating a new position, an "opening fee" of 0.25% is allocated as part of a position's debt, although it is not immediately charged. As interest accrues in the position, the fee is gradually paid off and is considered fully settled once the position's interest exceeds the fee amount. Unless the opening fee has been fully paid, if the user reduces their interest rate the user will be charged the remaining amount and a new opening fee will be allocated. Increasing the interest rate of a position does not realize the fee, but it will cause the opening fee to be paid off faster due to the higher interest rate.
 
 Repaying debt will trigger a pro-rata portion of the outstanding fee, calculated based on the amount being repaid. Increasing a position's debt will result in a 0.25% charge on the increase, which will be added to the outstanding fee amount.
 
@@ -71,7 +71,7 @@ This mechanism is designed to discourage users from temporarily increasing their
 
 ## ERC-721 Positions
 
-Each position is represented as an ERC-721 non-fungible token. This makes positions easily transferable between addresses. Each position's collateral and debt is isolated, hence transferring a position does not impact the recipient’s other open positions.
+Each position is represented as an ERC-721 non-fungible token, making positions easily transferable between addresses. Each position's collateral and debt are isolated, so transferring a position does not impact the recipient’s other open positions.
 
 ## Delegable Permissions
 
@@ -81,67 +81,67 @@ Position owners can delegate the management of their position's [interest rate](
 
 **Position Management**
 
-Position owners can also delegate the authority to manage the collateral and debt amounts of their position to a designated address, enabling proactive risk management against liquidation. 
+Position owners can also delegate the authority to manage their position's collateral and debt amounts to a designated address, enabling proactive risk management against liquidation. 
 
 **Note: Any collateral or debt withdrawn by the manager is transferred to the manager's address to enable the use of [flash borrow](#flash-borrow) to create leverage.**
 
 # Leverage
 
-Users can create leveraged cBTC exposure through Nectra. After creating a position, the issued nUSD is used to acquire cBTC that is then used as additional collateral for the position, with the ability of performing the loop several times. 
+Users can create leveraged cBTC exposure through Nectra. After creating a position, the issued nUSD is used to acquire cBTC, which is then used as additional collateral for the position. The loop can be performed several times to increase leverage. 
 
 Nectra's system maximum LTV of 83.3% caps the maximum obtainable leverage at 5.68X. 
 
-Using the [flash borrow](#flash-borrow) functionality to borrow cBTC allows users to create leverage in a fairly simple way. 
+Using the [flash borrow](#flash-borrow) functionality to borrow cBTC allows users to create leverage fairly simply 
 
-For example, a user with $100 of cBTC who wants 3x leverage could:
+For example, a user with \$100 of cBTC who wants 3x leverage could:
 
-1. **Flash borrow** $200 of cBTC.
-2. **Deposit** the original $100 cBTC + the $200 borrowed cBTC ($300 total collateral).
-3. **Withdraw** $202 nUSD ($2 nUSD will be used to pay the swap and flash borrow fees).
-4. **Swap** the $202 nUSD for approximately $201 cBTC (after ~0.5% fees).
-5. **Repay** the $200 cBTC flash borrow using their newly acquired $201 cBTC (with ~ 0.5% fees).
+1. **Flash borrow** \$200 of cBTC.
+2. **Deposit** the original \$100 cBTC + the \$200 borrowed cBTC (\$300 total collateral).
+3. **Withdraw** \$202 nUSD (\$2 nUSD will be used to pay the swap and flash borrow fees).
+4. **Swap** the \$202 nUSD for approximately \$201 cBTC (after ~0.5% fees).
+5. **Repay** the \$200 cBTC flash borrow using their newly acquired \$201 cBTC (with ~ 0.5% fees).
 
-The result is approximately $300 worth of cBTC exposure with a debt of $202 nUSD, resulting in an LTV of roughly 67.33% ($202 / $300).
+The result is approximately \$300 worth of cBTC exposure with a debt of \$202 nUSD, resulting in an LTV of roughly 67.33% (\$202 / \$300).
 
-**Warning: Using leverage increases the exposure to price movement of cBTC and thus the likelihood of being [liquidated](#liquidating-positions). Use with caution.**
+**Warning: Using leverage increases your exposure to the price movement of cBTC and, thus, the likelihood of being [liquidated](#liquidating-positions). Use with caution.**
 
 # Redemptions
 
-To maintain nUSD’s peg, redemptions allow any user to redeem 1 nUSD for $1 of cBTC.
+To maintain nUSD’s peg, redemptions allow any user to redeem 1 nUSD for \$1 of cBTC.
 
-If the price of nUSD falls below $1, arbitrageurs can buy nUSD on the open market to redeem the underlying collateral from Nectra for a profit. 
+If the price of nUSD falls below \$1, arbitrageurs can buy nUSD on the open market to redeem the underlying collateral from Nectra for a profit. 
 
 ## Ordering and Risk
 
-When redemptions occur, buckets are redemeed in order of buckets with the lowest interest rate to highest interest rate. Collateral is redeemed at a 1:1 value, thereby paying off the associated debt. If a bucket no longer has any remaining collateral, the next lowest bucket will be redeemed against.
+When redemptions occur, buckets are redemeed in order of buckets with the lowest interest rate to highest interest rate. Collateral is redeemed at 1:1, thereby paying off the associated debt. If a bucket no longer has any remaining collateral, the next lowest bucket will be redeemed against.
 
-Within a bucket, redemptions are applied proportionally across all outstanding positions. This ensures that redemptions are distributed fairly among borrowers offering the same interest rate.
+Within a bucket, redemptions are applied proportionally across all outstanding positions. The distribution of redemptions ensures that they are distributed fairly among borrowers offering the same interest rate.
 
 ## Profitability
 
 The potential profit from redemption arbitrage can be calculated as follows:
 
 $$
-\text{Profit}=\text{Redemption\_Amount}\times (\text{1}−\text{nUSD\_Price}−\text{Redemption\_Fee})
+\text{Profit} = \text{RedemptionAmount} \times (1 - \text{nUSDPrice} - \text{RedemptionFee})
 $$
 
 Where:
 
 - $\text{Profit}$ represents the potential earnings from a single redemption arbitrage transaction.
-- $\text{Redemption\_Amount}$ is the amount of nUSD being used for the redemption.
+- $\text{RedemptionAmount}$ is the amount of nUSD being used for the redemption.
 - $\text{1}$ is the target peg price of nUSD.
-- $\text{nUSD\_Price}$ is the current market price of nUSD (which would be below $1 to make arbitrage profitable).
-- $\text{Redemption\_Fee}$ is the fee charged by the Nectra protocol for performing a redemption.
+- $\text{nUSDPrice}$ is the current market price of nUSD (which would be below \$1 to make arbitrage profitable).
+- $\text{RedemptionFee}$ is the fee charged by the Nectra protocol for performing a redemption.
 
-This calculation shows that a profit can be made when the cost of acquiring nUSD (at the market price) plus the redemption fee is less than the value of the cBTC received ($1 per nUSD redeemed). 
+This calculation shows that a profit can be made when the cost of acquiring nUSD (at the market price) plus the redemption fee is less than the value of the cBTC received (\$1 per nUSD redeemed). 
 
-The larger the trade size and the greater the difference between $1 and the sum of the nUSD price and redemption fee, the higher the potential profit.
+The larger the trade size and the greater the difference between \$1 and the sum of the nUSD price and redemption fee, the higher the potential profit.
 
 ## Redemption Fee
 
-To manage the pace of redemptions, a dynamic redemption fee is applied on top of a 0.5% base fee and is paid in its entirety to the Savings Account module. This fee scales upwards with increasing redemption volume, acting as a temporary deterrent, and then gradually decreases over 6 hours to help the system return to equilibrium. 
+To manage the pace of redemptions, a dynamic redemption fee is applied on top of a 0.5% base fee and is paid to the Savings Account module. This fee scales upwards with increasing redemption volume, acting as a temporary deterrent, and then gradually decreases over 6 hours to help the system return to equilibrium. 
 
-The redemption fee is comprised of 3 components: the base fee ($f_{min}$) of 0.5%, a linearly decaying buffer based on time, and the proportion between the current redemption amount and the nUSD total supply. The linearly decaying factor at time $t_i$ is calculated as:
+The redemption fee comprises 3 components: the base fee ($f_{min}$) of 0.5%, a linearly decaying buffer based on time, and the proportion between the current redemption amount and the nUSD total supply. The linearly decaying factor at time $t_i$ is calculated as:
 
 $$
 \beta_{(t_i)} = \beta_{(t_{i-1})}\times(1 - \frac{\Delta t}{P})
@@ -173,9 +173,9 @@ After $\beta_{t_i}$ is used to calculate the redemption fee, the buffer is incre
 
 ## Flash Mint
 
-Nectra offers a "flash mint" feature allowing anyone to borrow unlimited nUSD without providing collateral. The borrowed amount and a fee of 0.25% (paid to the Savings Account module) must be returned within the same transaction. To ensure system stability during a flash mint, redemptions, Savings Account deposits (to avoid JIT attacks), and liquidations are temporarily blocked. 
+Nectra offers a "flash mint" feature that allows anyone to borrow unlimited nUSD without providing collateral. The borrowed amount and a fee of 0.25% (paid to the Savings Account module) must be returned within the same transaction. To ensure system stability during a flash mint, redemptions, Savings Account deposits (to avoid JIT attacks), and liquidations are temporarily blocked. 
 
-A key benefit for borrowers is the ability to repay debt and withdraw cBTC collateral in a single transaction without needing the upfront nUSD required to do so. For example, a user can flash mint nUSD, repay their loan, withdraw cBTC, and then sell that cBTC for nUSD within the same transaction to settle the flash mint and its fee. This enables efficient debt and collateral management. 
+A key benefit for borrowers is the ability to repay debt and withdraw cBTC collateral in a single transaction without needing the upfront nUSD required. For example, a user can flash mint nUSD, repay their loan, withdraw cBTC, and then sell that cBTC for nUSD within the same transaction to settle the flash mint and its fee, allowing efficient debt and collateral management. 
 
 ## Flash Borrow
 
@@ -194,41 +194,41 @@ The liquidator earns a share of this penalty, capped at $5 worth of cBTC, while 
 The nUSD required to pay for the liquidation can be provided from several sources and is calculated using the following formulas:
 
 $$
-\text{nUSD\_to\_fix\_LTV} = \frac{\text{Debt} \times \text{IR} - \text{Collateral} \times \text{Price}}{\text{IR} - \text{100%}}
+\text{nUSDtoFixLTV} = \frac{\text{Debt} \times \text{IR} - \text{Collateral} \times \text{Price}}{\text{IR} - \text{100\%}}
 $$
 
 Where:
 
-- $\text{nUSD\_to\_fix\_LTV}$ represents the amount of nUSD required to adjust the position's Loan-to-Value (LTV) to the maximum LTV.
+- $\text{nUSDtoFixLTV}$ represents the nUSD required to adjust the position's LTV to the maximum LTV.
 - $\text{Debt}$ is the current amount of nUSD borrowed by the user.
-- $\text{IR}$ denotes the issuance ratio, which is the target Loan-to-Value (LTV) expressed as a percentage, for example, 83.3%.
+- $\text{IR}$ denotes the issuance ratio, the target LTV expressed as a percentage, for example, 83.3%.
 - $\text{Collateral}$ refers to the amount of cBTC that has been deposited as collateral.
 - $\text{Price}$ indicates the current market price of cBTC.
 
 **Calculating Liquidation Penalty in nUSD**
 
 $$
-\text{Penalty\_nUSD} = \text{nUSD\_to\_fix\_LTV} \times \text{Penalty}
+\text{PenaltynUSD} = \text{nUSDtoFixLTV} \times \text{Penalty}
 $$
 
 Where:
 
-- $\text{Penalty\_nUSD}$ represents the amount of additional debt that will be burned from the account to cover the liquidation penalty.
+- $\text{PenaltynUSD}$ represents the additional debt that will be burned from the account to cover the liquidation penalty.
 - $\text{Penalty}$ refers to the liquidation penalty, currently set to 15%.
 
 **Calculating Total Liquidation Cost**
 
 $$
-\text{Liquidation\_Cost} = \text{nUSD\_to\_fix\_LTV + Penalty\_nUSD}
+\text{LiquidationCost} = \text{nUSDtoFixLTV + PenaltynUSD}
 $$
 
 **Liquidation Cost** represents the total nUSD required by a liquidator. The total collateral reward for a given liquidation is calculated as:
 
 $$
-\text{Penalty\_cBTC} = \frac{\text{Penalty\_nUSD} \times \text{IR}}{\text{Price}}
+\text{PenaltycBTC} = \frac{\text{PenaltynUSD} \times \text{IR}}{\text{Price}}
 $$
 
-When a liquidation occurs, the resulting cBTC penalty is divided into two parts. 15% of the penalty is directed to the Savings Account module, and up to $5 worth of the 85% share is allocated to the liquidator. Any amount exceeding $5 will be sent to the Savings Account module.
+The resulting cBTC penalty is divided into two parts when a liquidation occurs. 15% of the penalty is directed to the Savings Account module, and up to $5 worth of the 85% share is allocated to the liquidator. Any amount exceeding $5 will be sent to the Savings Account module.
 
 ## Liquidation Functions
 
@@ -242,37 +242,37 @@ The Savings Account module can source nUSD from:
 - Idle nUSD deposited into the Savings Account
 - Temporarily withdrawing nUSD from Savings Account yield generation strategies
 
-After the liquidation, the underlying collateral is sold to return the system to the original state, in addition to fees received. The liquidation penalty is earned by the Treasury Pool. The cBTC reward received by the liquidator can be calculated as:
+After the liquidation, the underlying collateral is sold to return the system to its original state, in addition to fees received. The liquidation penalty is earned by the Savings Account Module. The cBTC reward received by the liquidator can be calculated as:
 
 **Public Liquidations**
 
 Individuals can use their nUSD (or nUSD acquired through other sources) to perform liquidations. Users receive an equivalent amount of cBTC and a share of the liquidation penalty. The amount of cBTC received from a self-funded liquidation can be calculated using: 
 
 $$
-\text{cBTC\_Received} = \frac{ \text{nUSD\_to\_fix\_LTV}}{\text{Price}} + \text{Penalty\_cBTC} \times \text{85%}
+\text{cBTCReceived} = \frac{ \text{nUSDtoFixLTV}}{\text{Price}} + \text{PenaltycBTC} \times \mathrm{85%}
 $$
 
-While the liquidator will be fully reimbursed for their nUSD in the form of cBTC, the value of the cBTC reward they receive from the penalty cBTC is capped at $5 in value.
+While the liquidator will be fully reimbursed for their nUSD in the form of cBTC, the value of the cBTC reward they receive from the penalty cBTC is capped at $5.
 
 **Flash and Liquidate**
 
 The "flash mint" function allows users to perform public liquidations without having the required nUSD. The acquired cBTC is then swapped for nUSD through a DEX to repay the borrowed amount. The liquidator's reward is a portion of the liquidation penalty, minus any DEX fees, slippage incurred during the cBTC-to-nUSD swap, and the flash mint fee. The remaining portion of the penalty is allocated to the Savings Account module. The liquidator's reward is calculated as:
 
 $$
-\text{cBTC\_Received} = \text{Penalty\_cBTC}\times \text{85%}-\text{Swap\_Loss}-\text{Flash\_Fee}
+\text{cBTCReceived} = \text{PenaltycBTC}\times \text{85%}-\text{SwapLoss}-\text{FlashFee}
 $$
 
 ## Socialized Liquidations
 
 As a last resort, if a position approaches the point of going underwater (95.2% LTV), its debt and collateral can be proportionally distributed to other positions in the system based on their existing debt. 
 
-This debt-share distribution helps prevent cascading liquidation issues. A reward of nUSD at a fixed value of $5 is added to the liquidated positions’ debt before redistribution and rewarded to the caller.
+This debt-share distribution helps prevent cascading liquidation issues. Before redistribution, a fixed value reward of 10 nUSD is added to the liquidated positions’ debt and rewarded to the caller.
 
 # Stability Mechanisms
 
 ## nUSD < $1
 
-Nectra's primary mechanism to support the nUSD price when it falls below $1 is through redemptions. This creates a price floor, as market participants can profitably arbitrage the difference by purchasing undervalued nUSD and redeeming it for $1 worth of cBTC from the system, thus increasing the nUSD price back towards its peg.
+Nectra's primary mechanism for supporting the nUSD price when it falls below $1 is redemptions. Redemptions creates a price floor, as market participants can profitably arbitrage the difference by purchasing undervalued nUSD and redeeming it for $1 worth of cBTC from the system, thus increasing the nUSD price back towards its peg.
 
 A period of high demand for redemptions also creates a second-order effect. Borrowers are incentivized to temporarily increase their interest rates to reduce their risk of redemption, and the redemption fees themselves rise with volume. Since the interest and redemption fees are streamed to the Savings Account module, users are further incentivized to acquire discounted nUSD on the market and deposit it into the treasury pool to capture a portion of these earnings. Doing so reduces the circulating supply of nUSD.
 
@@ -280,7 +280,7 @@ A period of high demand for redemptions also creates a second-order effect. Borr
 
 If the market price of nUSD exceeds $1, Nectra incentivizes cBTC holders to deposit their assets as collateral and mint new nUSD at the prevailing cBTC:USD oracle price.
 
-Newly minted nUSD can then be sold on the open market for a value greater than $1, increasing the circulating supply and exerting downward pressure on the price, thereby diminishing the arbitrage opportunity for further price increases. Once the price stabilizes back down to the $1 peg, arbitrageurs can repurchase the nUSD at its intended price to repay their initial loan.
+Newly minted nUSD can then be sold on the open market for a value greater than $1, increasing the circulating supply and exerting downward pressure on the price, thereby diminishing the arbitrage opportunity for further price increases. Once the price stabilizes back down to the $1 peg, arbitrageurs can repurchase the nUSD at its intended price to repay their initial position.
 
 # Contract Architecture
 
@@ -512,7 +512,6 @@ function redeem(
   - The contract must be approved to burn nUSD from the redeemer
   - Redeemer will receive cBTC to repay for the burnt nUSD, less the redemption fee
 
-**NOTE:** The actual amount of collateral received depends on:
+**NOTE:** The actual amount of collateral received depends on the:
 - Current collateral price
 - Redemption fee rate
-
