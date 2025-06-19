@@ -855,6 +855,27 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
     }
 
+    function test_migrating_to_a_bucket_with_a_new_epoch_should_work() public {
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
+            0,
+            int256(defaultCollateral),
+            int256(defaultDebt),
+            cargs.minimumInterestRate + cargs.interestRateIncrement,
+            ""
+        );
+
+        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
+
+        // fully redeem the first bucket
+        _createAndFullyRedeemPosition();
+
+        // migrate position to new epoch
+        nectra.modifyPosition(tokenId, 0, 0, cargs.minimumInterestRate, "");
+
+        // confirm position is correct after migration
+        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, cargs.minimumInterestRate);
+    }
+
     // withdraw should be reentrant safe
     function test_should_be_reentrant_safe() public {
         // create position

@@ -381,6 +381,7 @@ library NectraLib {
         dest.lastGlobalAccumulatedLiquidatedCollateralPerShare = src.lastGlobalAccumulatedLiquidatedCollateralPerShare;
         dest.lastGlobalAccumulatedLiquidatedDebtPerShare = src.lastGlobalAccumulatedLiquidatedDebtPerShare;
         dest.lastUpdateTime = src.lastUpdateTime;
+        dest.epoch = src.epoch;
     }
 
     /// @notice Copies position state from source to destination
@@ -391,6 +392,7 @@ library NectraLib {
         dest.tokenId = src.tokenId;
         dest.collateral = src.collateral;
         dest.debtShares = src.debtShares;
+        dest.bucketEpoch = src.bucketEpoch;
         dest.lastBucketAccumulatedLiquidatedCollateralPerShare = src.lastBucketAccumulatedLiquidatedCollateralPerShare;
         dest.lastBucketAccumulatedRedeemedCollateralPerShare = src.lastBucketAccumulatedRedeemedCollateralPerShare;
         dest.interestRate = src.interestRate;
@@ -406,6 +408,7 @@ library NectraLib {
         dest.totalDebtShares = src.totalDebtShares;
         dest.accumulatedLiquidatedCollateralPerShare = src.accumulatedLiquidatedCollateralPerShare;
         dest.accumulatedLiquidatedDebtPerShare = src.accumulatedLiquidatedDebtPerShare;
+        dest.unrealizedLiquidatedDebt = src.unrealizedLiquidatedDebt;
         dest.fees = src.fees;
     }
 }
