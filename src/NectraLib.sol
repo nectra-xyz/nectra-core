@@ -408,6 +408,7 @@ library NectraLib {
         dest.totalDebtShares = src.totalDebtShares;
         dest.accumulatedLiquidatedCollateralPerShare = src.accumulatedLiquidatedCollateralPerShare;
         dest.accumulatedLiquidatedDebtPerShare = src.accumulatedLiquidatedDebtPerShare;
+        dest.unrealizedLiquidatedDebt = src.unrealizedLiquidatedDebt;
         dest.fees = src.fees;
     }
 }
