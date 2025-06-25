@@ -172,6 +172,23 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         nectra.redeem(160 ether + 1 wei, 0);
     }
 
+    function test_should_not_redeem_from_insolvent_bucket() public {
+        // collateral 100, debt = 5
+        // 100 * 1.2 / 1.4 ~= 85
+
+        nectra.modifyPosition(tokens[2], 0, 80 ether, interestRates[2], "");
+
+        uint256 initialBucketDebt = nectraExternal.getBucketDebt(interestRates[2]);
+        assertApproxEqRel(initialBucketDebt, 85 ether, 1e11, "Initial bucket debt should be 85 ether");
+
+        oracle.setCurrentPrice(0.6 ether);
+
+        nectra.redeem(60 ether, 0);
+
+        uint256 finalBucketDebt = nectraExternal.getBucketDebt(interestRates[2]);
+        assertApproxEqRel(finalBucketDebt, 85 ether, 1e11, "Final bucket debt should remain 85 ether");
+    }
+
     function test_findFirstSet_bucket_selection_adjacent() public {
         uint256 LOW_INTEREST_RATE = 0.005 ether;
         uint256 VERY_LOW_MID_RATE = 0.006 ether;

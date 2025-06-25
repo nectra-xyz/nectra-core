@@ -34,6 +34,7 @@ contract NectraBase {
     /// @param lastGlobalAccumulatedLiquidatedDebtPerShare Last global liquidated debt per share
     /// @param lastUpdateTime Timestamp of last bucket update
     struct Bucket {
+        uint256 collateral;
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -237,6 +238,7 @@ contract NectraBase {
         NectraLib.BucketState memory bucket = NectraLib.BucketState({
             interestRate: interestRate,
             epoch: epoch,
+            collateral: bucketStorage.collateral,
             totalDebtShares: bucketStorage.totalDebtShares,
             globalDebtShares: bucketStorage.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucketStorage.accumulatedLiquidatedCollateralPerShare,
@@ -323,13 +325,14 @@ contract NectraBase {
 
         if (position.bucketEpoch < currentEpoch) {
             uint256 realizedFee = NectraLib.calculateOutstandingFee(position, bucket);
+            uint256 collateral = position.collateral;
             global.fees += realizedFee;
 
             bucket = _loadAndUpdateBucketState(position.interestRate, currentEpoch, global);
 
             position = NectraLib.PositionState({
                 tokenId: tokenId,
-                collateral: position.collateral,
+                collateral: 0,
                 debtShares: 0,
                 lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
                 lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
@@ -338,13 +341,7 @@ contract NectraBase {
                 targetAccumulatedInterestPerBucketShare: bucket.accumulatedInterestPerShare
             });
 
-            NectraLib.modifyPosition(
-                position,
-                bucket,
-                global,
-                0, // collateral already accounted for
-                int256(realizedFee)
-            );
+            NectraLib.modifyPosition(position, bucket, global, int256(collateral), int256(realizedFee));
         }
 
         return (position, bucket, global);
@@ -381,6 +378,7 @@ contract NectraBase {
         });
 
         _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
+            collateral: bucket.collateral,
             totalDebtShares: bucket.totalDebtShares,
             globalDebtShares: bucket.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
@@ -417,6 +415,7 @@ contract NectraBase {
     /// @param bucket The final bucket state to store
     function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
         _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
+            collateral: bucket.collateral,
             totalDebtShares: bucket.totalDebtShares,
             globalDebtShares: bucket.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,

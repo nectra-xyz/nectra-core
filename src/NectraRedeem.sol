@@ -133,7 +133,12 @@ abstract contract NectraRedeem is NectraBase {
 
             uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
 
-            if (bucketDebt > 0) {
+            if (bucket.collateral.mulWad(collateralPrice) < bucketDebt) {
+                // if the bucket is insolvent, skip it but don't
+                // remove it from the bit mask as if the 
+                // price changes it may become solvent again
+                bucketId++;
+            } else if (bucketDebt > 0) {
                 // cap the amount of debt to burn to the bucket
                 uint256 burnAmount = amountRemaining < bucketDebt ? amountRemaining : bucketDebt;
 
@@ -147,20 +152,23 @@ abstract contract NectraRedeem is NectraBase {
                 // round redeemed collateral per share up to give rounding to the system
                 bucket.accumulatedRedeemedCollateralPerShare += collateral.divWadUp(bucket.totalDebtShares);
 
+                // update this in real-time to ensure the bucket doesn't go insolvent
+                bucket.collateral = NectraMathLib.saturatingAdd(bucket.collateral, -int256(collateral));
+
                 collateralRedeemed += collateral;
                 amountRemaining -= burnAmount;
                 _finalizeBucket(bucket);
-            }
 
-            if (bucket.globalDebtShares == 0) {
-                _epochs[interestRate]++;
-                // toggle the bit in the bit mask as we have fully redeemed from this bucket
-                bitMask &= ~(1 << (bucketId % 256));
-            }
+                if (bucket.globalDebtShares == 0) {
+                    _epochs[interestRate]++;
+                    // toggle the bit in the bit mask as we have fully redeemed from this bucket
+                    bitMask &= ~(1 << (bucketId % 256));
+                }
 
-            if (bucketId % 256 == 0xFF || amountRemaining == 0) {
-                _bucketBitMasks[bitMaskIndex] = bitMask;
-                if (amountRemaining == 0) break;
+                if (bucketId % 256 == 0xFF || amountRemaining == 0) {
+                    _bucketBitMasks[bitMaskIndex] = bitMask;
+                    if (amountRemaining == 0) break;
+                }
             }
         }
     }
