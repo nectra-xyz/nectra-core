@@ -15,10 +15,8 @@ contract NectraRedeemInsolventBucketTest is NectraRedeemTest {
 
         oracle.setCurrentPrice(2.4 ether);
 
-        nectra.modifyPosition{value: 100 ether}(
-            0, int256(100 ether), int256(125 ether), 0.033 ether, ""
-        );
-    
+        nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(125 ether), 0.033 ether, "");
+
         oracle.setCurrentPrice(1.2 ether);
     }
 }

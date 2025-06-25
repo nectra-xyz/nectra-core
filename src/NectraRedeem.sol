@@ -135,7 +135,7 @@ abstract contract NectraRedeem is NectraBase {
 
             if (bucket.collateral.mulWad(collateralPrice) < bucketDebt) {
                 // if the bucket is insolvent, skip it but don't
-                // remove it from the bit mask as if the 
+                // remove it from the bit mask as if the
                 // price changes it may become solvent again
                 bucketId++;
             } else if (bucketDebt > 0) {
