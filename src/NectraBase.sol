@@ -68,7 +68,16 @@ contract NectraBase {
     error FlashBorrowInProgress();
     error InvalidCollateralPrice();
 
-    event PositionUpdated( // the interest bearing debt (excludes outstanding fee)
+    /// @notice Emitted when a position is updated
+    /// @param tokenId ID of the position being updated
+    /// @param interestRate Interest rate of the position
+    /// @param collateral Amount of collateral in the position
+    /// @param debt Amount of interest bearing debt in the position (excluding fees)
+    /// @param outstandingFee Amount of outstanding fees for the position
+    /// @param bucketEpoch Current epoch of the bucket for the position
+    /// @param bucketDebt Total debt in the bucket for the position
+    /// @param timestamp Timestamp of the update
+    event PositionUpdated(
         uint256 indexed tokenId,
         uint256 indexed interestRate,
         uint256 collateral,
@@ -80,6 +89,11 @@ contract NectraBase {
         uint256 timestamp
     );
 
+    /// @notice Emitted when a bucket is updated
+    /// @param interestRate Interest rate of the bucket
+    /// @param epoch Current epoch of the bucket
+    /// @param debt Total debt in the bucket (excluding fees)
+    /// @param timestamp Timestamp of the update
     event BucketUpdated(
         uint256 indexed interestRate,
         uint256 indexed epoch,
