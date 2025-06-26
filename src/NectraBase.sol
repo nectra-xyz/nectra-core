@@ -68,11 +68,11 @@ contract NectraBase {
     error FlashBorrowInProgress();
     error InvalidCollateralPrice();
 
-    event PositionUpdated(
+    event PositionUpdated( // the interest bearing debt (excludes outstanding fee)
         uint256 indexed tokenId,
         uint256 indexed interestRate,
         uint256 collateral,
-        uint256 debt, // the interest bearing debt (excludes outstanding fee)
+        uint256 debt,
         uint256 outstandingFee,
         uint256 indexed bucketEpoch,
         // uint256 bucketCollateral,
@@ -413,7 +413,8 @@ contract NectraBase {
 
         _finalizeGlobal(global);
 
-        (uint256 debt, uint256 bucketDebt) = NectraLib.calculateBucketAndPositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
+        (uint256 debt, uint256 bucketDebt) =
+            NectraLib.calculateBucketAndPositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
         uint256 fee = NectraLib.calculateOutstandingFee(position, bucket);
 
         emit PositionUpdated(
