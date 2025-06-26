@@ -167,11 +167,11 @@ abstract contract NectraRedeem is NectraBase {
                     // toggle the bit in the bit mask as we have fully redeemed from this bucket
                     bitMask &= ~(1 << (bucketId % 256));
                 }
+            }
 
-                if (bucketId % 256 == 0xFF || amountRemaining == 0) {
-                    _bucketBitMasks[bitMaskIndex] = bitMask;
-                    if (amountRemaining == 0) break;
-                }
+            if (bucketId % 256 == 0xFF || amountRemaining == 0) {
+                _bucketBitMasks[bitMaskIndex] = bitMask;
+                if (amountRemaining == 0) break;
             }
         }
     }
