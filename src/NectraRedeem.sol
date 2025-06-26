@@ -133,7 +133,10 @@ abstract contract NectraRedeem is NectraBase {
 
             uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
 
-            if (bucket.collateral.mulWad(collateralPrice).divWad(FULL_LIQUIDATION_RATIO + OPEN_FEE_PERCENTAGE) < bucketDebt) {
+            if (
+                bucket.collateral.mulWad(collateralPrice).divWad(FULL_LIQUIDATION_RATIO + OPEN_FEE_PERCENTAGE)
+                    < bucketDebt
+            ) {
                 // if the bucket is likely insolvent, skip it but don't
                 // remove it from the bit mask as if the
                 // price changes it may become solvent again
