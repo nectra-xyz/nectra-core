@@ -44,6 +44,7 @@ library NectraLib {
     struct BucketState {
         uint256 interestRate;
         uint256 epoch;
+        uint256 collateral;
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -118,6 +119,7 @@ library NectraLib {
 
                 bucket.accumulatedLiquidatedCollateralPerShare +=
                     newCollateral.divWad(initialBucketState.totalDebtShares);
+                bucket.collateral += newCollateral;
             }
 
             // calculate and apply interest
@@ -287,6 +289,7 @@ library NectraLib {
 
         bucket.totalDebtShares = NectraMathLib.saturatingAdd(bucket.totalDebtShares, debtShares);
         bucket.globalDebtShares = NectraMathLib.saturatingAdd(bucket.globalDebtShares, globalDebtShares);
+        bucket.collateral = NectraMathLib.saturatingAdd(bucket.collateral, collateralDiff);
 
         global.totalDebtShares = NectraMathLib.saturatingAdd(global.totalDebtShares, globalDebtShares);
         global.debt = NectraMathLib.saturatingAdd(global.debt, debtDiff);
@@ -373,6 +376,7 @@ library NectraLib {
     /// @param src The source bucket state
     function copy(NectraLib.BucketState memory dest, NectraLib.BucketState memory src) internal pure {
         dest.interestRate = src.interestRate;
+        dest.collateral = src.collateral;
         dest.totalDebtShares = src.totalDebtShares;
         dest.globalDebtShares = src.globalDebtShares;
         dest.accumulatedLiquidatedCollateralPerShare = src.accumulatedLiquidatedCollateralPerShare;
