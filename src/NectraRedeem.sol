@@ -141,7 +141,7 @@ abstract contract NectraRedeem is NectraBase {
                 // remove it from the bit mask as if the
                 // price changes it may become solvent again
                 bucketId++;
-            } else {
+            } else if (bucketDebt > 0) {
                 // cap the amount of debt to burn to the bucket
                 uint256 burnAmount = amountRemaining < bucketDebt ? amountRemaining : bucketDebt;
 

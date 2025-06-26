@@ -119,6 +119,7 @@ library NectraLib {
 
                 bucket.accumulatedLiquidatedCollateralPerShare +=
                     newCollateral.divWad(initialBucketState.totalDebtShares);
+                bucket.collateral += newCollateral;
             }
 
             // calculate and apply interest
@@ -168,7 +169,6 @@ library NectraLib {
             uint256 newCollateral = collateralPerShareDiff.mulWad(position.debtShares);
 
             position.collateral += newCollateral;
-            bucket.collateral += newCollateral;
             position.lastBucketAccumulatedLiquidatedCollateralPerShare = bucket.accumulatedLiquidatedCollateralPerShare;
         }
 
