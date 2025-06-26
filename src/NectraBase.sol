@@ -68,6 +68,26 @@ contract NectraBase {
     error FlashBorrowInProgress();
     error InvalidCollateralPrice();
 
+    event PositionUpdated(
+        uint256 indexed tokenId,
+        uint256 indexed interestRate,
+        uint256 collateral,
+        uint256 debt, // the interest bearing debt (excludes outstanding fee)
+        uint256 outstandingFee,
+        uint256 indexed bucketEpoch,
+        // uint256 bucketCollateral,
+        uint256 bucketDebt,
+        uint256 timestamp
+    );
+
+    event BucketUpdated(
+        uint256 indexed interestRate,
+        uint256 indexed epoch,
+        uint256 debt,
+        // uint256 collateral,
+        uint256 timestamp
+    );
+
     uint256 internal immutable LIQUIDATION_RATIO;
     uint256 internal immutable FULL_LIQUIDATION_RATIO;
     uint256 internal immutable ISSUANCE_RATIO;
@@ -392,6 +412,21 @@ contract NectraBase {
         });
 
         _finalizeGlobal(global);
+
+        (uint256 debt, uint256 bucketDebt) = NectraLib.calculateBucketAndPositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
+        uint256 fee = NectraLib.calculateOutstandingFee(position, bucket);
+
+        emit PositionUpdated(
+            position.tokenId,
+            position.interestRate,
+            position.collateral,
+            fee,
+            // bucket.collateral,
+            debt,
+            position.bucketEpoch,
+            bucketDebt,
+            block.timestamp
+        );
     }
 
     /// @notice Finalizes global state changes and handles fee distribution
@@ -415,8 +450,8 @@ contract NectraBase {
     /// @notice Finalizes bucket state changes
     /// @dev Updates bucket storage with the final state values
     /// @param bucket The final bucket state to store
-    function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
-        _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
+    function _finalizeBucket(NectraLib.BucketState memory bucket, NectraLib.GlobalState memory global) internal {
+        _buckets[bucket.interestRate][bucket.epoch] = Bucket({
             totalDebtShares: bucket.totalDebtShares,
             globalDebtShares: bucket.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
@@ -426,6 +461,15 @@ contract NectraBase {
             lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
             lastUpdateTime: bucket.lastUpdateTime
         });
+
+        uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up);
+        emit BucketUpdated(
+            bucket.interestRate,
+            bucket.epoch,
+            bucketDebt,
+            // bucket.collateral,
+            block.timestamp
+        );
     }
 
     /// @notice Calculates the index of a bucket based on its interest rate

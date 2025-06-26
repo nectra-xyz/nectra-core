@@ -122,7 +122,7 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
         );
 
         if (oldBucket.lastUpdateTime != 0) {
-            _finalizeBucket(oldBucket);
+            _finalizeBucket(oldBucket, global);
         }
         _finalize(position, bucket, global);
 
@@ -348,7 +348,7 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
 
         (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _epochs[interestRate]);
 
-        _finalizeBucket(bucket);
+        _finalizeBucket(bucket, global);
         _finalizeGlobal(global);
     }
 }

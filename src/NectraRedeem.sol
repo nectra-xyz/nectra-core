@@ -29,7 +29,8 @@ abstract contract NectraRedeem is NectraBase {
 
     error MinAmountOutNotMet(uint256 amountOut, uint256 minAmountOut);
 
-    event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
+    event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFeePercentage, address indexed operator);
+    event BucketRedemption(uint256 indexed interestRate, uint256 debtBurned, uint256 collateralRedeemed);
 
     RedemptionFeeStorage internal _redemptionFeeStorage;
 
@@ -84,7 +85,7 @@ abstract contract NectraRedeem is NectraBase {
             FEE_RECIPIENT_ADDRESS.safeTransferETH(treasuryCollateralRedeemed);
         }
 
-        emit Redemption(amount, collateralRedeemed, redemptionFeePercentage);
+        emit Redemption(amount, collateralRedeemed, redemptionFeePercentage, msg.sender);
 
         return collateralRedeemed;
     }
@@ -149,7 +150,9 @@ abstract contract NectraRedeem is NectraBase {
 
                 collateralRedeemed += collateral;
                 amountRemaining -= burnAmount;
-                _finalizeBucket(bucket);
+                _finalizeBucket(bucket, globalState);
+
+                emit BucketRedemption(interestRate, burnAmount, collateral);
             }
 
             if (bucket.globalDebtShares == 0) {
