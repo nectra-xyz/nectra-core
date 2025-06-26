@@ -43,9 +43,7 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
         uint256 indexed tokenId,
         int256 depositOrWithdraw,
         int256 borrowOrRepay,
-        uint256 collateral,
-        uint256 debt,
-        uint256 interestRate,
+        uint256 indexed interestRate,
         address indexed operator
     );
 
@@ -147,8 +145,6 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
             position.tokenId,
             depositOrWithdraw,
             borrowOrRepay,
-            position.collateral,
-            effectiveDebt,
             interestRate,
             msg.sender
         );

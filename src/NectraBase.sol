@@ -74,8 +74,6 @@ contract NectraBase {
     /// @param collateral Amount of collateral in the position
     /// @param debt Amount of interest bearing debt in the position (excluding fees)
     /// @param outstandingFee Amount of outstanding fees for the position
-    /// @param bucketEpoch Current epoch of the bucket for the position
-    /// @param bucketDebt Total debt in the bucket for the position
     /// @param timestamp Timestamp of the update
     event PositionUpdated(
         uint256 indexed tokenId,
@@ -83,9 +81,6 @@ contract NectraBase {
         uint256 collateral,
         uint256 debt,
         uint256 outstandingFee,
-        uint256 indexed bucketEpoch,
-        // uint256 bucketCollateral,
-        uint256 bucketDebt,
         uint256 timestamp
     );
 
@@ -414,34 +409,18 @@ contract NectraBase {
             targetAccumulatedInterestPerBucketShare: position.targetAccumulatedInterestPerBucketShare
         });
 
-        _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
-            totalDebtShares: bucket.totalDebtShares,
-            globalDebtShares: bucket.globalDebtShares,
-            accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
-            accumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            accumulatedInterestPerShare: bucket.accumulatedInterestPerShare,
-            lastGlobalAccumulatedLiquidatedCollateralPerShare: bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare,
-            lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
-            lastUpdateTime: bucket.lastUpdateTime
-        });
-
+        _finalizeBucket(bucket, global);
         _finalizeGlobal(global);
 
-        (uint256 debt, uint256 bucketDebt) =
-            NectraLib.calculateBucketAndPositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
-        uint256 fee = NectraLib.calculateOutstandingFee(position, bucket);
-
-        emit PositionUpdated(
-            position.tokenId,
-            position.interestRate,
-            position.collateral,
-            fee,
+        emit PositionUpdated({
+            tokenId: position.tokenId,
+            interestRate: position.interestRate,
+            collateral: position.collateral,
+            debt: NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up),
+            outstandingFee: NectraLib.calculateOutstandingFee(position, bucket),
             // bucket.collateral,
-            debt,
-            position.bucketEpoch,
-            bucketDebt,
-            block.timestamp
-        );
+            timestamp: block.timestamp
+        });
     }
 
     /// @notice Finalizes global state changes and handles fee distribution

@@ -152,17 +152,6 @@ abstract contract NectraLiquidate is NectraBase {
         global.accumulatedLiquidatedCollateralPerShare += liquidatedCollateral.divWad(global.totalDebtShares);
         global.unrealizedLiquidatedDebt += liquidatedDebt + FULL_LIQUIDATOR_FEE;
 
-        position = NectraLib.PositionState({
-            tokenId: tokenId,
-            collateral: 0,
-            debtShares: 0,
-            lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
-            lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            interestRate: position.interestRate,
-            bucketEpoch: position.bucketEpoch,
-            targetAccumulatedInterestPerBucketShare: bucket.accumulatedInterestPerShare
-        });
-
         _finalize(position, bucket, global);
 
         NUSDToken(NUSD_TOKEN_ADDRESS).mint(msg.sender, FULL_LIQUIDATOR_FEE);
