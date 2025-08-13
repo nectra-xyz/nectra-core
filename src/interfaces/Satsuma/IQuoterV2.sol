@@ -19,10 +19,7 @@ interface IQuoterV2 {
     /// @return initializedTicksCrossedList List of the initialized ticks that the swap crossed for each pool in the path
     /// @return gasEstimate The estimate of the gas that the swap consumes
     /// @return feeList List of the fee values used for swaps in the path
-    function quoteExactInput(
-        bytes memory path,
-        uint256 amountInRequired
-    )
+    function quoteExactInput(bytes memory path, uint256 amountInRequired)
         external
         returns (
             uint256[] memory amountOutList,
@@ -53,9 +50,7 @@ interface IQuoterV2 {
     /// @return initializedTicksCrossed The number of initialized ticks that the swap crossed
     /// @return gasEstimate The estimate of the gas that the swap consumes
     /// @return fee The fee value used for swap in the pool
-    function quoteExactInputSingle(
-        QuoteExactInputSingleParams memory params
-    )
+    function quoteExactInputSingle(QuoteExactInputSingleParams memory params)
         external
         returns (
             uint256 amountOut,
@@ -75,10 +70,7 @@ interface IQuoterV2 {
     /// @return initializedTicksCrossedList List of the initialized ticks that the swap crossed for each pool in the path
     /// @return gasEstimate The estimate of the gas that the swap consumes
     /// @return feeList List of the fee values used for swaps in the path
-    function quoteExactOutput(
-        bytes memory path,
-        uint256 amountOutRequired
-    )
+    function quoteExactOutput(bytes memory path, uint256 amountOutRequired)
         external
         returns (
             uint256[] memory amountOutList,
@@ -109,9 +101,7 @@ interface IQuoterV2 {
     /// @return initializedTicksCrossed The number of initialized ticks that the swap crossed
     /// @return gasEstimate The estimate of the gas that the swap consumes
     /// @return fee The fee value used for swap in the pool
-    function quoteExactOutputSingle(
-        QuoteExactOutputSingleParams memory params
-    )
+    function quoteExactOutputSingle(QuoteExactOutputSingleParams memory params)
         external
         returns (
             uint256 amountOut,

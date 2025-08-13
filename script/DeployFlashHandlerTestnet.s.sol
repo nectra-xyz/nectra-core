@@ -8,7 +8,6 @@ import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-
 contract DeployFlashHandlerTestnet is Script {
     uint256 deployerPrivateKey = vm.envUint("TESTNET_PRIVATE_KEY");
     address public deployer = vm.addr(deployerPrivateKey);
@@ -30,30 +29,24 @@ contract DeployFlashHandlerTestnet is Script {
 
     function run() public {
         vm.startBroadcast(deployerPrivateKey);
-            console.log("Deployer:     ", deployer);
+        console.log("Deployer:     ", deployer);
 
-            // Deploy new NectraExternal
-            nectraExternal = new NectraExternal(nectra, nectraNFT);
+        // Deploy new NectraExternal
+        nectraExternal = new NectraExternal(nectra, nectraNFT);
 
-            // Deploy the SatsumaDex Handler
-            satsumaHandler = new SatsumaHandler(swapRouter, quoter, nUSD, WCBTC);
+        // Deploy the SatsumaDex Handler
+        satsumaHandler = new SatsumaHandler(swapRouter, quoter, nUSD, WCBTC);
 
-            // Deploy NectraFlashHandler
-            nectraFlashHandler = new NectraFlashHandler(
-                nUSD,
-                nectra,
-                nectraNFT,
-                address(nectraExternal),
-                oracleAggregator,
-                payable(satsumaHandler)
-            );
+        // Deploy NectraFlashHandler
+        nectraFlashHandler = new NectraFlashHandler(
+            nUSD, nectra, nectraNFT, address(nectraExternal), oracleAggregator, payable(satsumaHandler)
+        );
 
+        console.log("NectraExternal: ", address(nectraExternal));
+        console.log("SatsumaHandler: ", address(satsumaHandler));
+        console.log("NectraFlashHandler: ", address(nectraFlashHandler));
 
-            console.log("NectraExternal: ", address(nectraExternal));
-            console.log("SatsumaHandler: ", address(satsumaHandler));
-            console.log("NectraFlashHandler: ", address(nectraFlashHandler));
-
-            console.log("\n  Deployer cBTC bal: ", deployer.balance);
+        console.log("\n  Deployer cBTC bal: ", deployer.balance);
         vm.stopBroadcast();
     }
 }

@@ -12,21 +12,19 @@ interface INectraFlashHandler {
     error DesiredCollateralTooLow(uint256 desiredCollateral, uint256 msgValue);
     error IssuanceRatioExceeded(uint256 actualIssuanceRatio, uint256 maxIssuanceRatio);
     error InsufficientCollateralOut(uint256 actualCollateralOut, uint256 minCollateralOut);
-    error InsufficientCollateralForSwap(uint256 availableCollateral, uint256 requiredCollateral); 
+    error InsufficientCollateralForSwap(uint256 availableCollateral, uint256 requiredCollateral);
 
     // ============ FUNCTIONS ============
-    
+
     /// @notice Get quote for closing a position
     /// @param tokenId The position to close
     /// @param limitSqrtPrice Price limit for the swap
     /// @return collateralOut Expected collateral output after closing
     /// @return collateralToSwap Amount of collateral that will be swapped to repay the loan and flash mint fee
     /// @return positionCollateral Amount of collateral in the position
-    function quoteClosePosition(uint256 tokenId, uint160 limitSqrtPrice) external returns (
-        uint256 collateralOut, 
-        uint256 collateralToSwap,
-        uint256 positionCollateral
-    );
+    function quoteClosePosition(uint256 tokenId, uint160 limitSqrtPrice)
+        external
+        returns (uint256 collateralOut, uint256 collateralToSwap, uint256 positionCollateral);
 
     /// @notice Create or increase the exposure of a leveraged position
     /// @param tokenId The position to modify
@@ -49,11 +47,9 @@ interface INectraFlashHandler {
     /// @param minCollateralOut Minimum collateral to receive after closing (slippage protection)
     /// @param recipient Address to receive the withdrawn collateral
     /// @return collateralOut Amount of collateral sent to recipient
-    function flashClosePosition(
-        uint256 tokenId,
-        uint256 minCollateralOut,
-        address recipient
-    ) external returns (uint256 collateralOut);
+    function flashClosePosition(uint256 tokenId, uint256 minCollateralOut, address recipient)
+        external
+        returns (uint256 collateralOut);
 
     /// @notice Callback function for flashBorrow
     /// @param asset The asset being borrowed
@@ -62,14 +58,11 @@ interface INectraFlashHandler {
     /// @param initiator The address that initiated the flash borrow
     /// @param params The parameters for the flash borrow
     /// @return success Whether the operation was successful
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) external payable returns (bool);
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+        external
+        payable
+        returns (bool);
 
     /// @notice get cBTC price in USD
     function getCBTCPrice() external view returns (uint256);
-} 
+}

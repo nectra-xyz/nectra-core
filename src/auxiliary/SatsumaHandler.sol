@@ -20,12 +20,7 @@ contract SatsumaHandler {
     error UnauthorizedDeposit(address caller, address allowedCaller);
     error TransferFailed(address token, address to, uint256 amount);
 
-    constructor(
-        address _swapRouter,
-        address _quoter,
-        address _nUSD,
-        address _WCBTC
-    ) {
+    constructor(address _swapRouter, address _quoter, address _nUSD, address _WCBTC) {
         swapRouter = ISwapRouter(_swapRouter);
         quoter = IQuoterV2(_quoter);
         nUSD = IERC20(_nUSD);
@@ -35,43 +30,35 @@ contract SatsumaHandler {
     // ============ INTERNAL HELPER FUNCTIONS ============
 
     /// @notice Internal function to get exact input quote
-    function _getExactInputQuote(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint160 limitSqrtPrice
-    ) internal returns (uint256 amountOut, uint160 sqrtPriceX96After) {
-        IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2
-            .QuoteExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                deployer: address(0),
-                amountIn: amountIn,
-                limitSqrtPrice: limitSqrtPrice
-            });
+    function _getExactInputQuote(address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice)
+        internal
+        returns (uint256 amountOut, uint160 sqrtPriceX96After)
+    {
+        IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            deployer: address(0),
+            amountIn: amountIn,
+            limitSqrtPrice: limitSqrtPrice
+        });
 
-        (amountOut, , sqrtPriceX96After, , , ) = quoter
-            .quoteExactInputSingle(params);
+        (amountOut,, sqrtPriceX96After,,,) = quoter.quoteExactInputSingle(params);
     }
 
     /// @notice Internal function to get exact output quote
-    function _getExactOutputQuote(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountOut,
-        uint160 limitSqrtPrice
-    ) internal returns (uint256 amountIn, uint160 sqrtPriceX96After) {
-        IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2
-            .QuoteExactOutputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                deployer: address(0),
-                amount: amountOut,
-                limitSqrtPrice: limitSqrtPrice
-            });
+    function _getExactOutputQuote(address tokenIn, address tokenOut, uint256 amountOut, uint160 limitSqrtPrice)
+        internal
+        returns (uint256 amountIn, uint160 sqrtPriceX96After)
+    {
+        IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2.QuoteExactOutputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            deployer: address(0),
+            amount: amountOut,
+            limitSqrtPrice: limitSqrtPrice
+        });
 
-        (, amountIn, sqrtPriceX96After, , , ) = quoter
-            .quoteExactOutputSingle(params);
+        (, amountIn, sqrtPriceX96After,,,) = quoter.quoteExactOutputSingle(params);
     }
 
     /// @notice Internal function to execute exact input swap
@@ -84,17 +71,16 @@ contract SatsumaHandler {
     ) internal returns (uint256 amountOut) {
         IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-            .ExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                deployer: address(0),
-                recipient: address(this),
-                deadline: block.timestamp + 300,
-                amountIn: amountIn,
-                amountOutMinimum: amountOutMinimum,
-                limitSqrtPrice: limitSqrtPrice
-            });
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            deployer: address(0),
+            recipient: address(this),
+            deadline: block.timestamp + 300,
+            amountIn: amountIn,
+            amountOutMinimum: amountOutMinimum,
+            limitSqrtPrice: limitSqrtPrice
+        });
 
         amountOut = swapRouter.exactInputSingle(params);
     }
@@ -109,20 +95,19 @@ contract SatsumaHandler {
     ) internal returns (uint256 amountIn) {
         IERC20(tokenIn).approve(address(swapRouter), amountInMaximum);
 
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
-            .ExactOutputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                deployer: address(0),
-                recipient: address(this),
-                deadline: block.timestamp + 300,
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum,
-                limitSqrtPrice: limitSqrtPrice
-            });
+        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            deployer: address(0),
+            recipient: address(this),
+            deadline: block.timestamp + 300,
+            amountOut: amountOut,
+            amountInMaximum: amountInMaximum,
+            limitSqrtPrice: limitSqrtPrice
+        });
 
         amountIn = swapRouter.exactOutputSingle(params);
-        
+
         // Clear unspent allowance
         if (amountIn < amountInMaximum) {
             IERC20(tokenIn).approve(address(swapRouter), 0);
@@ -138,7 +123,9 @@ contract SatsumaHandler {
 
         uint256 wcbTcBalAfter = WCBTC.balanceOf(address(this));
         if (wcbTcBalAfter > 0) {
-            require(WCBTC.transfer(msg.sender, wcbTcBalAfter), TransferFailed(address(WCBTC), msg.sender, wcbTcBalAfter));
+            require(
+                WCBTC.transfer(msg.sender, wcbTcBalAfter), TransferFailed(address(WCBTC), msg.sender, wcbTcBalAfter)
+            );
         }
     }
 
@@ -158,184 +145,117 @@ contract SatsumaHandler {
 
     // ============ QUOTE FUNCTIONS ============
 
-    function getNUSDToWCBTCExactInputQuote(
-        uint256 amountIn,
-        uint160 limitSqrtPrice
-    ) external returns (uint256 amountOut, uint160 sqrtPriceX96After) {
+    function getNUSDToWCBTCExactInputQuote(uint256 amountIn, uint160 limitSqrtPrice)
+        external
+        returns (uint256 amountOut, uint160 sqrtPriceX96After)
+    {
         return _getExactInputQuote(address(nUSD), address(WCBTC), amountIn, limitSqrtPrice);
     }
 
-    function getNUSDToWCBTCExactOutputQuote(
-        uint256 amountOut,
-        uint160 limitSqrtPrice
-    ) external returns (uint256 amountIn, uint160 sqrtPriceX96After) {
+    function getNUSDToWCBTCExactOutputQuote(uint256 amountOut, uint160 limitSqrtPrice)
+        external
+        returns (uint256 amountIn, uint160 sqrtPriceX96After)
+    {
         return _getExactOutputQuote(address(nUSD), address(WCBTC), amountOut, limitSqrtPrice);
     }
 
-    function getWCBTCToNUSDExactInputQuote(
-        uint256 amountIn,
-        uint160 limitSqrtPrice
-    ) public returns (uint256 amountOut, uint160 sqrtPriceX96After) {
+    function getWCBTCToNUSDExactInputQuote(uint256 amountIn, uint160 limitSqrtPrice)
+        public
+        returns (uint256 amountOut, uint160 sqrtPriceX96After)
+    {
         return _getExactInputQuote(address(WCBTC), address(nUSD), amountIn, limitSqrtPrice);
     }
 
-    function getWCBTCToNUSDExactOutputQuote(
-        uint256 amountOut,
-        uint160 limitSqrtPrice
-    ) public returns (uint256 amountIn, uint160 sqrtPriceX96After) {
+    function getWCBTCToNUSDExactOutputQuote(uint256 amountOut, uint160 limitSqrtPrice)
+        public
+        returns (uint256 amountIn, uint160 sqrtPriceX96After)
+    {
         return _getExactOutputQuote(address(WCBTC), address(nUSD), amountOut, limitSqrtPrice);
     }
 
-    function getCBTCToNUSDExactInputQuote(
-        uint256 amountIn,
-        uint160 limitSqrtPrice
-    ) external returns (uint256 amountOut, uint160 sqrtPriceX96After) {
+    function getCBTCToNUSDExactInputQuote(uint256 amountIn, uint160 limitSqrtPrice)
+        external
+        returns (uint256 amountOut, uint160 sqrtPriceX96After)
+    {
         // Same as WCBTC quote since we just wrap first
         return getWCBTCToNUSDExactInputQuote(amountIn, limitSqrtPrice);
     }
 
-    function getCBTCToNUSDExactOutputQuote(
-        uint256 amountOut,
-        uint160 limitSqrtPrice
-    ) external returns (uint256 amountIn, uint160 sqrtPriceX96After) {
+    function getCBTCToNUSDExactOutputQuote(uint256 amountOut, uint160 limitSqrtPrice)
+        external
+        returns (uint256 amountIn, uint160 sqrtPriceX96After)
+    {
         // Same as WCBTC quote since we just wrap first
         return getWCBTCToNUSDExactOutputQuote(amountOut, limitSqrtPrice);
     }
 
     // ============ NUSD -> WCBTC/cBTC SWAP FUNCTIONS ============
 
-    function swapNUSDToWCBTCExactInput(
-        uint256 amountIn,
-        uint256 amountOutMinimum,
-        uint160 limitSqrtPrice
-    ) external {
+    function swapNUSDToWCBTCExactInput(uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice) external {
         nUSD.transferFrom(msg.sender, address(this), amountIn);
 
-        _executeExactInputSwap(
-            address(nUSD),
-            address(WCBTC),
-            amountIn,
-            amountOutMinimum,
-            limitSqrtPrice
-        );
+        _executeExactInputSwap(address(nUSD), address(WCBTC), amountIn, amountOutMinimum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
-    function swapNUSDToWCBTCExactOutput(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint160 limitSqrtPrice
-    ) external {
+    function swapNUSDToWCBTCExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
         nUSD.transferFrom(msg.sender, address(this), amountInMaximum);
-        
-        _executeExactOutputSwap(
-            address(nUSD),
-            address(WCBTC),
-            amountOut,
-            amountInMaximum,
-            limitSqrtPrice
-        );
+
+        _executeExactOutputSwap(address(nUSD), address(WCBTC), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
-    function swapNUSDToCBTCExactOutput(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint160 limitSqrtPrice
-    ) external {
+    function swapNUSDToCBTCExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
         nUSD.transferFrom(msg.sender, address(this), amountInMaximum);
 
-        _executeExactOutputSwap(
-            address(nUSD),
-            address(WCBTC),
-            amountOut,
-            amountInMaximum,
-            limitSqrtPrice
-        );
+        _executeExactOutputSwap(address(nUSD), address(WCBTC), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalancesWithCBTCConversion();
     }
 
     // ============ WCBTC/cBTC -> NUSD SWAP FUNCTIONS ============
 
-    function swapWCBTCToNUSDExactInput(
-        uint256 amountIn,
-        uint256 amountOutMinimum,
-        uint160 limitSqrtPrice
-    ) external {
+    function swapWCBTCToNUSDExactInput(uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice) external {
         WCBTC.transferFrom(msg.sender, address(this), amountIn);
-        
-        _executeExactInputSwap(
-            address(WCBTC),
-            address(nUSD),
-            amountIn,
-            amountOutMinimum,
-            limitSqrtPrice
-        );
+
+        _executeExactInputSwap(address(WCBTC), address(nUSD), amountIn, amountOutMinimum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
-    function swapWCBTCToNUSDExactOutput(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint160 limitSqrtPrice
-    ) external {
+    function swapWCBTCToNUSDExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
         WCBTC.transferFrom(msg.sender, address(this), amountInMaximum);
-        
-        _executeExactOutputSwap(
-            address(WCBTC),
-            address(nUSD),
-            amountOut,
-            amountInMaximum,
-            limitSqrtPrice
-        );
+
+        _executeExactOutputSwap(address(WCBTC), address(nUSD), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
-    function swapCBTCToNUSDExactInput(
-        uint256 amountIn,
-        uint256 amountOutMinimum,
-        uint160 limitSqrtPrice
-    ) external payable {
+    function swapCBTCToNUSDExactInput(uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice)
+        external
+        payable
+    {
         require(msg.value == amountIn, "Incorrect cBTC amount sent");
 
         // Wrap cBTC to WCBTC
         WCBTC.deposit{value: amountIn}();
 
-        _executeExactInputSwap(
-            address(WCBTC),
-            address(nUSD),
-            amountIn,
-            amountOutMinimum,
-            limitSqrtPrice
-        );
+        _executeExactInputSwap(address(WCBTC), address(nUSD), amountIn, amountOutMinimum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
-    function swapCBTCToNUSDExactOutput(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint160 limitSqrtPrice
-    ) external payable {
+    function swapCBTCToNUSDExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice)
+        external
+        payable
+    {
         require(msg.value == amountInMaximum, "Incorrect cBTC amount sent");
 
         // Wrap cBTC to WCBTC
         WCBTC.deposit{value: amountInMaximum}();
 
-        _executeExactOutputSwap(
-            address(WCBTC),
-            address(nUSD),
-            amountOut,
-            amountInMaximum,
-            limitSqrtPrice
-        );
+        _executeExactOutputSwap(address(WCBTC), address(nUSD), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalancesWithCBTCConversion();
     }
 
     /// @notice Only receive cBTC from WCBTC withdraw
     receive() external payable {
-        require(
-            msg.sender == address(WCBTC),
-            UnauthorizedDeposit(msg.sender, address(WCBTC))
-        );
+        require(msg.sender == address(WCBTC), UnauthorizedDeposit(msg.sender, address(WCBTC)));
     }
 }

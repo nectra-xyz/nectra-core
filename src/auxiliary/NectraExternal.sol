@@ -116,7 +116,11 @@ contract NectraExternal {
     /// @param tokenId ID of the position to query
     /// @return collateral Amount of collateral in the position
     /// @return debt Position debt including outstanding fees
-    function getPosition(uint256 tokenId) public view returns (uint256 collateral, uint256 debt, uint256 interestRate) {
+    function getPosition(uint256 tokenId)
+        public
+        view
+        returns (uint256 collateral, uint256 debt, uint256 interestRate)
+    {
         (
             NectraLib.PositionState memory positionState,
             NectraLib.BucketState memory bucketState,

@@ -20,7 +20,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     using SafeCastLib for uint256;
     using NectraMathLib for uint256;
     using FixedPointMathLib for int256;
-    using FixedPointMathLib for uint256;    
+    using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
     uint256 constant UNIT = 1 ether;
@@ -34,7 +34,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     error DesiredCollateralTooLow(uint256 desiredCollateral, uint256 msgValue);
     error IssuanceRatioExceeded(uint256 actualIssuanceRatio, uint256 maxIssuanceRatio);
     error InsufficientCollateralOut(uint256 actualCollateralOut, uint256 minCollateralOut);
-    error InsufficientCollateralForSwap(uint256 availableCollateral, uint256 requiredCollateral); 
+    error InsufficientCollateralForSwap(uint256 availableCollateral, uint256 requiredCollateral);
 
     uint256 private receiveAmountLock;
 
@@ -71,11 +71,10 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @return collateralOut Expected collateral output after closing
     /// @return collateralToSwap Amount of collateral that will be swapped to repay the loan and flash mint fee
     /// @return positionCollateral Amount of collateral in the position
-    function quoteClosePosition(uint256 tokenId, uint160 limitSqrtPrice) external returns (
-        uint256 collateralOut, 
-        uint256 collateralToSwap,
-        uint256 positionCollateral
-    ) {
+    function quoteClosePosition(uint256 tokenId, uint160 limitSqrtPrice)
+        external
+        returns (uint256 collateralOut, uint256 collateralToSwap, uint256 positionCollateral)
+    {
         // Caller does not need to be authorized to quote closing a position
         _requirePositionExists(tokenId);
 
@@ -87,10 +86,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
         uint256 flashMintFee = positionDebt.mulWadUp(nectraExternal.FLASH_MINT_FEE());
         uint256 totalRepayment = positionDebt + flashMintFee;
 
-        (collateralToSwap, ) = satsumaHandler.getCBTCToNUSDExactOutputQuote(
-            totalRepayment,
-            limitSqrtPrice
-        );
+        (collateralToSwap,) = satsumaHandler.getCBTCToNUSDExactOutputQuote(totalRepayment, limitSqrtPrice);
         collateralOut = positionCollateral - collateralToSwap;
     }
 
@@ -127,7 +123,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             if (positionInterestRate != desiredInterestRate) {
                 permissionBitmask |= 1 << uint256(INectraNFT.Permission.AdjustInterest);
             }
-            
+
             _requireCallerAuthorized(tokenId, msg.sender, permissionBitmask);
         }
 
@@ -142,12 +138,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             IssuanceRatioExceeded(minTargetCratio, nectraExternal.ISSUANCE_RATIO())
         );
 
-        bytes memory params = abi.encode(
-            tokenId,
-            desiredCollateral,
-            desiredInterestRate,
-            maxDebt
-        );
+        bytes memory params = abi.encode(tokenId, desiredCollateral, desiredInterestRate, maxDebt);
         uint256 collateralToBorrow = desiredCollateral - msg.value - existingPositionCollateral;
 
         nectra.flashBorrow(address(this), collateralToBorrow, params);
@@ -166,29 +157,24 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param minCollateralOut Minimum collateral to receive after closing (slippage protection)
     /// @param recipient Address to receive the withdrawn collateral
     /// @return collateralOut Amount of collateral sent to recipient
-    function flashClosePosition(
-        uint256 tokenId,
-        uint256 minCollateralOut,
-        address recipient
-    ) external returns (uint256 collateralOut) {
+    function flashClosePosition(uint256 tokenId, uint256 minCollateralOut, address recipient)
+        external
+        returns (uint256 collateralOut)
+    {
         _requirePositionExists(tokenId);
 
         uint256 permissionBitmask = 1 << uint256(INectraNFT.Permission.Repay);
         permissionBitmask |= 1 << uint256(INectraNFT.Permission.Withdraw);
         _requireCallerAuthorized(tokenId, msg.sender, permissionBitmask);
 
-        (uint256 positionCollateral, uint256 positionDebt, uint256 positionInterestRate) = nectraExternal.getPosition(tokenId);
+        (uint256 positionCollateral, uint256 positionDebt, uint256 positionInterestRate) =
+            nectraExternal.getPosition(tokenId);
 
         require(positionDebt > 0, InvalidAmount(positionDebt, 0));
         require(positionCollateral > 0, InvalidAmount(positionCollateral, 0));
 
         // Encode parameters for the callback
-        bytes memory params = abi.encode(
-            tokenId,
-            positionDebt,
-            positionCollateral,
-            positionInterestRate
-        );
+        bytes memory params = abi.encode(tokenId, positionDebt, positionCollateral, positionInterestRate);
 
         // Initiate flash mint
         nectra.flashMint(address(this), positionDebt, params);
@@ -196,8 +182,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
         // Send remaining collateral to recipient
         uint256 remainingCollateral = address(this).balance;
         require(
-            remainingCollateral >= minCollateralOut,
-            InsufficientCollateralOut(remainingCollateral, minCollateralOut)
+            remainingCollateral >= minCollateralOut, InsufficientCollateralOut(remainingCollateral, minCollateralOut)
         );
 
         if (remainingCollateral > 0) {
@@ -214,21 +199,13 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param initiator The address that initiated the flash borrow
     /// @param params The parameters for the flash borrow
     /// @return success Whether the operation was successful
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) external payable returns (bool) {
-        require(
-            msg.sender == address(nectra),
-            UnauthorizedCaller(msg.sender, address(nectra))
-        );
-        require(
-            initiator == address(this),
-            UnauthorizedCaller(initiator, address(this))
-        );
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+        external
+        payable
+        returns (bool)
+    {
+        require(msg.sender == address(nectra), UnauthorizedCaller(msg.sender, address(nectra)));
+        require(initiator == address(this), UnauthorizedCaller(initiator, address(this)));
 
         if (asset == address(0)) {
             require(amount == msg.value, InvalidAmount(amount, msg.value));
@@ -246,10 +223,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @notice get cBTC price in USD
     function getCBTCPrice() public view returns (uint256) {
         (uint256 cBTCPrice, bool isStale) = oracleAggregator.getLatestPrice();
-        require(
-            cBTCPrice > 0 && isStale == false,
-            InvalidCBTCPrice(cBTCPrice, isStale)
-        );
+        require(cBTCPrice > 0 && isStale == false, InvalidCBTCPrice(cBTCPrice, isStale));
         return cBTCPrice;
     }
 
@@ -261,40 +235,26 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param amount The amount of the asset being borrowed
     /// @param premium The premium of the flash borrow
     /// @param params The parameters for the flash borrow
-    function _increasePositionExposure(
-        uint256 amount,
-        uint256 premium,
-        bytes calldata params
-    ) internal {
+    function _increasePositionExposure(uint256 amount, uint256 premium, bytes calldata params) internal {
         // Get params
-        (
-            uint256 tokenId,
-            uint256 desiredCollateral,
-            uint256 desiredInterestRate,
-            uint256 maxDebt
-        ) = abi.decode(params, (uint256, uint256, uint256, uint256));
+        (uint256 tokenId, uint256 desiredCollateral, uint256 desiredInterestRate, uint256 maxDebt) =
+            abi.decode(params, (uint256, uint256, uint256, uint256));
 
         uint256 swapAmountOut = amount + premium;
         // Slippage for the swap is not important because we limit the cost to maxDebt
-        (uint256 swapAmountIn, uint160 sqrtPriceX96After) = satsumaHandler
-            .getNUSDToWCBTCExactOutputQuote(swapAmountOut, 30_000_000_000_000_000_000_000_000_000_000_000_000_000_000); // 3 * 10^40
+        (uint256 swapAmountIn, uint160 sqrtPriceX96After) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(
+            swapAmountOut, 30_000_000_000_000_000_000_000_000_000_000_000_000_000_000
+        ); // 3 * 10^40
         // Scale the swap amount by the open fee percentage
         uint256 expectedDebt = swapAmountIn.mulWad(UNIT + nectraExternal.OPEN_FEE_PERCENTAGE()).divWad(UNIT);
 
         if (tokenId == 0) {
             // Create new position
-            require(
-                expectedDebt <= maxDebt,
-                MaxDebtExceeded(expectedDebt, maxDebt)
-            );
+            require(expectedDebt <= maxDebt, MaxDebtExceeded(expectedDebt, maxDebt));
 
             // Open position
             nectra.modifyPosition{value: desiredCollateral}(
-                0,
-                int256(desiredCollateral),
-                int256(swapAmountIn),
-                desiredInterestRate,
-                ""
+                0, int256(desiredCollateral), int256(swapAmountIn), desiredInterestRate, ""
             );
         } else {
             // Check new position will not exceed maxDebt
@@ -303,31 +263,19 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             require(newDebt <= maxDebt, MaxDebtExceeded(newDebt, maxDebt));
 
             // Check if we have enough collateral to send
-            uint256 collateralToSend = desiredCollateral -
-                nectraExternal.getPositionCollateral(tokenId);
-            require(
-                collateralToSend <= address(this).balance,
-                InvalidAmount(collateralToSend, address(this).balance)
-            );
+            uint256 collateralToSend = desiredCollateral - nectraExternal.getPositionCollateral(tokenId);
+            require(collateralToSend <= address(this).balance, InvalidAmount(collateralToSend, address(this).balance));
 
             // Modify position
             nectra.modifyPosition{value: collateralToSend}(
-                tokenId,
-                int256(collateralToSend),
-                int256(swapAmountIn),
-                desiredInterestRate,
-                ""
+                tokenId, int256(collateralToSend), int256(swapAmountIn), desiredInterestRate, ""
             );
         }
 
         // Sell nUSD for cBTC
         receiveAmountLock = swapAmountOut;
         nUSD.approve(address(satsumaHandler), swapAmountIn);
-        satsumaHandler.swapNUSDToCBTCExactOutput(
-            swapAmountOut,
-            swapAmountIn,
-            sqrtPriceX96After
-        );
+        satsumaHandler.swapNUSDToCBTCExactOutput(swapAmountOut, swapAmountIn, sqrtPriceX96After);
 
         // Repay flash loan
         nectra.repayFlashBorrow{value: swapAmountOut}();
@@ -337,18 +285,10 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param amount The amount of the asset being borrowed
     /// @param premium The premium of the flash borrow
     /// @param params The parameters for the flash borrow
-    function _flashClosePosition(
-        uint256 amount,
-        uint256 premium,
-        bytes calldata params
-    ) internal {
+    function _flashClosePosition(uint256 amount, uint256 premium, bytes calldata params) internal {
         // Get params
-        (
-            uint256 tokenId,
-            uint256 positionDebt,
-            uint256 positionCollateral,
-            uint256 interestRate
-        ) = abi.decode(params, (uint256, uint256, uint256, uint256));
+        (uint256 tokenId, uint256 positionDebt, uint256 positionCollateral, uint256 interestRate) =
+            abi.decode(params, (uint256, uint256, uint256, uint256));
 
         require(amount == positionDebt, InvalidAmount(amount, positionDebt));
 
@@ -369,19 +309,16 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
         // Calculate how much collateral we need to swap to cover the flash mint repayment
         uint256 totalRepayment = amount + premium;
         // Slippage for the swap is not important because we check minCollateralOut in the external function
-        (uint256 collateralToSwap, uint160 sqrtPriceX96After) = satsumaHandler
-            .getCBTCToNUSDExactOutputQuote(totalRepayment, 0);
+        (uint256 collateralToSwap, uint160 sqrtPriceX96After) =
+            satsumaHandler.getCBTCToNUSDExactOutputQuote(totalRepayment, 0);
 
         require(
-            collateralToSwap <= positionCollateral,
-            InsufficientCollateralForSwap(positionCollateral, collateralToSwap)
+            collateralToSwap <= positionCollateral, InsufficientCollateralForSwap(positionCollateral, collateralToSwap)
         );
 
         // Swap collateral to nUSD to repay flash mint
         satsumaHandler.swapCBTCToNUSDExactOutput{value: collateralToSwap}(
-            totalRepayment,
-            collateralToSwap,
-            sqrtPriceX96After
+            totalRepayment, collateralToSwap, sqrtPriceX96After
         );
 
         // Approve the flash mint repayment
@@ -393,7 +330,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     function _requirePositionExists(uint256 tokenId) internal view {
         require(tokenId > 0, InvalidPositionId(tokenId));
 
-        try nectraNFT.ownerOf(tokenId) returns (address) {} 
+        try nectraNFT.ownerOf(tokenId) returns (address) {}
         catch (bytes memory) {
             revert InvalidPositionId(tokenId);
         }
@@ -405,18 +342,14 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param permissionBitmask The bitmask of permissions required
     function _requireCallerAuthorized(uint256 tokenId, address caller, uint256 permissionBitmask) internal view {
         require(
-            nectraNFT.ownerOf(tokenId) == caller ||
-                nectraNFT.authorized(tokenId, caller, permissionBitmask),
+            nectraNFT.ownerOf(tokenId) == caller || nectraNFT.authorized(tokenId, caller, permissionBitmask),
             UnauthorizedCaller(caller, nectraNFT.ownerOf(tokenId))
         );
     }
 
     /// @notice Only accept expected cBTC
     receive() external payable {
-        require(
-            msg.value == receiveAmountLock,
-            InvalidAmount(msg.value, receiveAmountLock)
-        );
+        require(msg.value == receiveAmountLock, InvalidAmount(msg.value, receiveAmountLock));
         receiveAmountLock = 0;
     }
 }

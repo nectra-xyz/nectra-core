@@ -9,7 +9,6 @@ import {IWCBTC} from "src/interfaces/IWCBTC.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
 
-
 contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
     uint256 public constant UNIT = 1 ether;
 
@@ -32,18 +31,15 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
 
     // ============ IQUOTERV2 IMPLEMENTATION ============
 
-    function quoteExactInput(
-        bytes memory /* path */,
-        uint256 /* amountInRequired */
-    )
+    function quoteExactInput(bytes memory, /* path */ uint256 /* amountInRequired */ )
         external
         pure
         returns (
-            uint256[] memory /* amountOutList */,
-            uint256[] memory /* amountInList */,
-            uint160[] memory /* sqrtPriceX96AfterList */,
-            uint32[] memory /* initializedTicksCrossedList */,
-            uint256 /* gasEstimate */,
+            uint256[] memory, /* amountOutList */
+            uint256[] memory, /* amountInList */
+            uint160[] memory, /* sqrtPriceX96AfterList */
+            uint32[] memory, /* initializedTicksCrossedList */
+            uint256, /* gasEstimate */
             uint16[] memory /* feeList */
         )
     {
@@ -51,9 +47,7 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         revert("Multi-hop swaps not supported in mock");
     }
 
-    function quoteExactInputSingle(
-        QuoteExactInputSingleParams memory params
-    )
+    function quoteExactInputSingle(QuoteExactInputSingleParams memory params)
         external
         view
         returns (
@@ -66,44 +60,39 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         )
     {
         amountIn = params.amountIn;
-        
+
         if (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC)) {
             // nUSD -> WCBTC
             (uint256 price,) = oracle.getLatestPrice();
             amountOut = params.amountIn * UNIT / price;
-            
         } else if (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)) {
             // WCBTC -> nUSD
             (uint256 price,) = oracle.getLatestPrice();
-            amountOut = params.amountIn * price / UNIT;       
-
+            amountOut = params.amountIn * price / UNIT;
         } else {
             revert("Unsupported token pair");
         }
-        
+
         // Apply slippage and fees (reduce output)
         if (slippageAndFees > 0) {
             amountOut = amountOut * (UNIT - slippageAndFees) / UNIT;
         }
-    
+
         sqrtPriceX96After = 0; // Mock value
         initializedTicksCrossed = 1; // Mock value
         gasEstimate = 200000; // Mock value
         fee = 3000; // 0.3% fee mock
     }
 
-    function quoteExactOutput(
-        bytes memory /* path */,
-        uint256 /* amountOutRequired */
-    )
+    function quoteExactOutput(bytes memory, /* path */ uint256 /* amountOutRequired */ )
         external
         pure
         returns (
-            uint256[] memory /* amountOutList */,
-            uint256[] memory /* amountInList */,
-            uint160[] memory /* sqrtPriceX96AfterList */,
-            uint32[] memory /* initializedTicksCrossedList */,
-            uint256 /* gasEstimate */,
+            uint256[] memory, /* amountOutList */
+            uint256[] memory, /* amountInList */
+            uint160[] memory, /* sqrtPriceX96AfterList */
+            uint32[] memory, /* initializedTicksCrossedList */
+            uint256, /* gasEstimate */
             uint16[] memory /* feeList */
         )
     {
@@ -111,9 +100,7 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         revert("Multi-hop swaps not supported in mock");
     }
 
-    function quoteExactOutputSingle(
-        QuoteExactOutputSingleParams memory params
-    )
+    function quoteExactOutputSingle(QuoteExactOutputSingleParams memory params)
         external
         view
         returns (
@@ -126,17 +113,15 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         )
     {
         amountOut = params.amount;
-        
+
         if (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC)) {
             // nUSD -> WCBTC
             (uint256 price,) = oracle.getLatestPrice();
             amountIn = params.amount * price / UNIT;
-            
         } else if (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)) {
             // WCBTC -> nUSD
             (uint256 price,) = oracle.getLatestPrice();
             amountIn = params.amount * UNIT / price;
-            
         } else {
             revert("Unsupported token pair");
         }
@@ -145,7 +130,7 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         if (slippageAndFees > 0) {
             amountIn = amountIn * (UNIT + slippageAndFees) / UNIT;
         }
-        
+
         sqrtPriceX96After = 0; // Mock value
         initializedTicksCrossed = 1; // Mock value
         gasEstimate = 200000; // Mock value
@@ -154,20 +139,16 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
 
     // ============ ISWAPROUTER IMPLEMENTATION ============
 
-    function exactInputSingle(ExactInputSingleParams calldata params)
-        external
-        payable
-        returns (uint256 amountOut)
-    {
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut) {
         require(params.deadline >= block.timestamp, "Transaction too old");
-        
+
         if (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC)) {
             // nUSD -> WCBTC
             nUSD.transferFrom(msg.sender, address(this), params.amountIn);
-            
+
             (uint256 price,) = oracle.getLatestPrice();
             amountOut = params.amountIn * UNIT / price;
-            
+
             // Apply slippage and fees
             uint256 fees = 0;
             if (slippageAndFees > 0) {
@@ -177,16 +158,15 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
             }
 
             require(amountOut >= params.amountOutMinimum, "Insufficient output amount");
-            
+
             WCBTC.transfer(params.recipient, amountOut);
-            
         } else if (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)) {
             // WCBTC -> nUSD
             WCBTC.transferFrom(msg.sender, address(this), params.amountIn);
-            
+
             (uint256 price,) = oracle.getLatestPrice();
             amountOut = params.amountIn * price / UNIT;
-            
+
             // Apply slippage and fees
             uint256 fees = 0;
             if (slippageAndFees > 0) {
@@ -196,61 +176,54 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
             }
 
             require(amountOut >= params.amountOutMinimum, "Insufficient output amount");
-            
+
             nUSD.transfer(params.recipient, amountOut);
-            
         } else {
             revert("Unsupported token pair");
         }
     }
 
-    function exactOutputSingle(ExactOutputSingleParams calldata params)
-        external
-        payable
-        returns (uint256 amountIn)
-    {
+    function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn) {
         require(params.deadline >= block.timestamp, "Transaction too old");
-        
+
         if (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC)) {
             // nUSD -> WCBTC
             (uint256 price,) = oracle.getLatestPrice();
             amountIn = params.amountOut * price / UNIT;
-            
+
             // Apply slippage and fees (increase input required)
             if (slippageAndFees > 0) {
                 amountIn = amountIn * (UNIT + slippageAndFees) / UNIT;
             }
-            
+
             require(amountIn <= params.amountInMaximum, "Excessive input amount");
-            
+
             nUSD.transferFrom(msg.sender, address(this), amountIn);
-            
+
             // Calculate fees
             uint256 fees = amountIn - (params.amountOut * price / UNIT);
             accumulatedFeesNUSD += fees;
-            
+
             WCBTC.transfer(params.recipient, params.amountOut);
-            
         } else if (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)) {
             // WCBTC -> nUSD
             (uint256 price,) = oracle.getLatestPrice();
             amountIn = params.amountOut * UNIT / price;
-            
+
             // Apply slippage and fees (increase input required)
             if (slippageAndFees > 0) {
                 amountIn = amountIn * (UNIT + slippageAndFees) / UNIT;
             }
-            
+
             require(amountIn <= params.amountInMaximum, "Excessive input amount");
-            
+
             WCBTC.transferFrom(msg.sender, address(this), amountIn);
-            
+
             // Calculate fees
             uint256 fees = amountIn - (params.amountOut * UNIT / price);
             accumulatedFeesWCBTC += fees;
-            
+
             nUSD.transfer(params.recipient, params.amountOut);
-            
         } else {
             revert("Unsupported token pair");
         }

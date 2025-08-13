@@ -24,14 +24,18 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     address internal user2 = makeAddr("user2");
     address internal recipient = makeAddr("recipient");
     address internal attacker = makeAddr("attacker");
-    
+
     uint256 dexFeesAndSlippage = 0.008 ether; // 0.8% slippage and fees
 
-    function _createPosition(address _user, uint256 _initialCollateral, uint256 _desiredCollateral) internal returns (uint256 tokenId, uint256 maxDebt) {
-        uint256 flashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (_desiredCollateral - _initialCollateral) / UNIT;
-        (uint256 swapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
+    function _createPosition(address _user, uint256 _initialCollateral, uint256 _desiredCollateral)
+        internal
+        returns (uint256 tokenId, uint256 maxDebt)
+    {
+        uint256 flashBorrowAmountWithFees =
+            (UNIT + cargs.flashBorrowFee) * (_desiredCollateral - _initialCollateral) / UNIT;
+        (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
         maxDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
-        
+
         vm.prank(_user);
         tokenId = flashHandler.increasePositionExposure{value: _initialCollateral}(
             0,
@@ -43,8 +47,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     }
 
     function setUp() public override {
-        cargs.flashBorrowFee = 0.0025 ether;   // 0.25%
-        cargs.flashMintFee = 0.0025 ether;     // 0.25%
+        cargs.flashBorrowFee = 0.0025 ether; // 0.25%
+        cargs.flashMintFee = 0.0025 ether; // 0.25%
         cargs.openFeePercentage = 0.002 ether; // 0.2%
         super.setUp();
 
@@ -52,12 +56,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         wcbtc = new WCBTCMock();
 
         // Deploy Satsuma mock
-        satsumaMock = new SatsumaMock(
-            address(nectraUSD), 
-            address(nectra), 
-            address(oracle), 
-            address(wcbtc)
-        );
+        satsumaMock = new SatsumaMock(address(nectraUSD), address(nectra), address(oracle), address(wcbtc));
         satsumaMock.setSlippageAndFees(dexFeesAndSlippage); // 0.8% slippage and fees
 
         // Deploy SatsumaHandler wrapping the mock
@@ -82,7 +81,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         oracle.setCurrentPrice(BTC_PRICE);
 
         // Setup liquidity in the DEX mock
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, int256(10000000 * UNIT),  0.05 ether, "");
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, int256(10000000 * UNIT), 0.05 ether, "");
         nectraUSD.transfer(address(satsumaMock), 10000000 * UNIT); // 10M nUSD
 
         deal(address(satsumaMock), 500 ether); // 1000 cBTC
@@ -96,8 +95,6 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Give user some WCBTC
         vm.prank(user);
         wcbtc.deposit{value: 10 ether}();
-
-        
     }
 
     // ============ CREATE LEVERAGED POSITION TESTS ============
@@ -143,8 +140,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Now increase the position
         uint256 additionalValue = 3 ether;
         uint256 newDesiredCollateral = 15 ether;
-        uint256 newFlashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - additionalValue) / UNIT;
-        (uint256 AdditionalSwapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
+        uint256 newFlashBorrowAmountWithFees =
+            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - additionalValue) / UNIT;
+        (uint256 AdditionalSwapAmountIn,) =
+            satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + debtBefore;
 
         // Authorize flash handler for deposit and borrow
@@ -156,11 +155,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         vm.prank(user);
         uint256 returnedTokenId = flashHandler.increasePositionExposure{value: additionalValue}(
-            tokenId,
-            newDesiredCollateral,
-            0.05 ether,
-            newMaxDebt,
-            user
+            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user
         );
 
         // Verify same token ID returned
@@ -180,23 +175,14 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     function test_increasePositionExposure_revertIfDesiredCollateralTooLow() public {
         uint256 msgValue = 1 ether;
         uint256 desiredCollateral = 1 ether; // Equal to msg.value (should be greater)
-        uint256 maxDebt = BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+        uint256 maxDebt =
+            BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.prank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                NectraFlashHandler.DesiredCollateralTooLow.selector,
-                desiredCollateral,
-                msgValue
-            )
+            abi.encodeWithSelector(NectraFlashHandler.DesiredCollateralTooLow.selector, desiredCollateral, msgValue)
         );
-        flashHandler.increasePositionExposure{value: msgValue}(
-            0,
-            desiredCollateral,
-            0.05 ether,
-            maxDebt,
-            user
-        );
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
     }
 
     function test_increasePositionExposure_revertIfDesiredCollateralTooLowForExistingPosition() public {
@@ -217,20 +203,14 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 newDesiredCollateral = msgValue + desiredCollateral; // existing collateral
 
         vm.startPrank(user);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    NectraFlashHandler.DesiredCollateralTooLow.selector,
-                    newDesiredCollateral,
-                    msgValue + desiredCollateral
-                )
-            );
-            flashHandler.increasePositionExposure{value: msgValue}(
-                tokenId,
-                newDesiredCollateral,
-                0.05 ether,
-                type(uint256).max,
-                user
-            );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                NectraFlashHandler.DesiredCollateralTooLow.selector, newDesiredCollateral, msgValue + desiredCollateral
+            )
+        );
+        flashHandler.increasePositionExposure{value: msgValue}(
+            tokenId, newDesiredCollateral, 0.05 ether, type(uint256).max, user
+        );
         vm.stopPrank();
     }
 
@@ -243,36 +223,22 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), cargs.issuanceRatio)
         );
-        flashHandler.increasePositionExposure{value: msgValue}(
-            0,
-            desiredCollateral,
-            0.05 ether,
-            maxDebt,
-            user
-        );
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
     }
 
     function test_increasePositionExposure_revertIfMaxDebtExceeded() public {
         uint256 msgValue = 1 ether;
         uint256 desiredCollateral = 10 ether; // > msgValue, high leverage
-        
+
         uint256 flashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
-        (uint256 swapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
+        (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
         uint256 expectedDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
 
         uint256 maxDebt = 1000 * UNIT; // Very low max debt
 
         vm.prank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt)
-        );
-        flashHandler.increasePositionExposure{value: msgValue}(
-            0,
-            desiredCollateral,
-            0.05 ether,
-            maxDebt,
-            user
-        );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt));
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
     }
 
     // ============ CLOSE LEVERAGED POSITION TESTS ============
@@ -294,17 +260,13 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
         // Close the position
-        (, uint256 debt, ) = nectraExternal.getPosition(tokenId);
+        (, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 totalDebtCost = debt * (UNIT + cargs.flashMintFee) / UNIT;
-        (uint256 swapAmountIn, ) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
+        (uint256 swapAmountIn,) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
         uint256 minCollateralOut = desiredCollateral - swapAmountIn;
 
         vm.prank(user);
-        uint256 collateralOut = flashHandler.flashClosePosition(
-            tokenId,
-            minCollateralOut,
-            recipient
-        );
+        uint256 collateralOut = flashHandler.flashClosePosition(tokenId, minCollateralOut, recipient);
 
         // Verify position is closed
         (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokenId);
@@ -327,20 +289,18 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Try to close with unrealistic minimum collateral
         uint256 minCollateralOut = 50 ether; // Impossible to achieve
         (uint256 actualCollateralOut,,) = flashHandler.quoteClosePosition(tokenId, 0);
-        
+
         uint256 permissionBitmask = 1 << uint256(NectraNFT.Permission.Repay);
         permissionBitmask |= 1 << uint256(NectraNFT.Permission.Withdraw);
 
         vm.startPrank(user);
-            nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    NectraFlashHandler.InsufficientCollateralOut.selector,
-                    actualCollateralOut,
-                    minCollateralOut
-                )
-            );
-            flashHandler.flashClosePosition(tokenId, minCollateralOut, recipient);
+        nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                NectraFlashHandler.InsufficientCollateralOut.selector, actualCollateralOut, minCollateralOut
+            )
+        );
+        flashHandler.flashClosePosition(tokenId, minCollateralOut, recipient);
         vm.stopPrank();
     }
 
@@ -352,28 +312,19 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         uint256 extraCollateral = 2 ether;
         uint256 newDesiredCollateral = 15 ether;
-        uint256 newFlashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - 10 ether - extraCollateral) / UNIT;
-        (uint256 AdditionalSwapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
+        uint256 newFlashBorrowAmountWithFees =
+            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - 10 ether - extraCollateral) / UNIT;
+        (uint256 AdditionalSwapAmountIn,) =
+            satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + maxDebt;
 
         // Try to modify as different user without authorization
         vm.startPrank(user2);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    NectraFlashHandler.UnauthorizedCaller.selector,
-                    user2,
-                    user
-                )
-            );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.UnauthorizedCaller.selector, user2, user));
 
-            
-            flashHandler.increasePositionExposure{value: extraCollateral}(
-                tokenId,
-                newDesiredCollateral,
-                0.05 ether,
-                newMaxDebt,
-                user2
-            );
+        flashHandler.increasePositionExposure{value: extraCollateral}(
+            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user2
+        );
         vm.stopPrank();
     }
 
@@ -383,14 +334,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         // Try to close as different user without authorization
         vm.startPrank(user2);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    NectraFlashHandler.UnauthorizedCaller.selector,
-                    user2,
-                    user
-                )
-            );
-            flashHandler.flashClosePosition(tokenId, 1 ether, user2);
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.UnauthorizedCaller.selector, user2, user));
+        flashHandler.flashClosePosition(tokenId, 1 ether, user2);
         vm.stopPrank();
     }
 
@@ -405,16 +350,18 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         permissionBitmask |= 1 << uint256(NectraNFT.Permission.Borrow);
 
         vm.startPrank(user);
-            nectraNFT.authorize(tokenId, user2, permissionBitmask);
-            nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
+        nectraNFT.authorize(tokenId, user2, permissionBitmask);
+        nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
         vm.stopPrank();
 
         // Now user2 should be able to modify the position
         deal(user2, 10 ether);
         uint256 newDesiredCollateral = 15 ether;
         uint256 extraCollateral = 2 ether;
-        uint256 newFlashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
-        (uint256 AdditionalSwapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
+        uint256 newFlashBorrowAmountWithFees =
+            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
+        (uint256 AdditionalSwapAmountIn,) =
+            satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + maxDebt;
 
         vm.prank(user2);
@@ -440,10 +387,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Authorize user2 for repay and withdraw
         uint256 permissionBitmask = 1 << uint256(NectraNFT.Permission.Repay);
         permissionBitmask |= 1 << uint256(NectraNFT.Permission.Withdraw);
-        
+
         vm.startPrank(user);
-            nectraNFT.authorize(tokenId, user2, permissionBitmask);
-            nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
+        nectraNFT.authorize(tokenId, user2, permissionBitmask);
+        nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
         vm.stopPrank();
 
         // Now user2 should be able to close the position
@@ -461,30 +408,16 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     function test_executeOperation_revertIfNotCalledByNectra() public {
         vm.prank(attacker);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                NectraFlashHandler.UnauthorizedCaller.selector,
-                attacker,
-                address(nectra)
-            )
+            abi.encodeWithSelector(NectraFlashHandler.UnauthorizedCaller.selector, attacker, address(nectra))
         );
-        flashHandler.executeOperation(
-            address(0),
-            1 ether,
-            0.1 ether,
-            address(flashHandler),
-            ""
-        );
+        flashHandler.executeOperation(address(0), 1 ether, 0.1 ether, address(flashHandler), "");
     }
 
     function test_executeOperation_revertIfNotInitiatedByHandler() public {
         // This test simulates Nectra calling executeOperation but with wrong initiator
         vm.prank(address(nectra));
         vm.expectRevert(
-            abi.encodeWithSelector(
-                NectraFlashHandler.UnauthorizedCaller.selector,
-                attacker,
-                address(flashHandler)
-            )
+            abi.encodeWithSelector(NectraFlashHandler.UnauthorizedCaller.selector, attacker, address(flashHandler))
         );
         flashHandler.executeOperation(
             address(0),
@@ -497,18 +430,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
     function test_executeOperation_revertIfInvalidAsset() public {
         address invalidAsset = makeAddr("invalidAsset");
-        
+
         vm.prank(address(nectra));
-        vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.InvalidAsset.selector, invalidAsset)
-        );
-        flashHandler.executeOperation(
-            invalidAsset,
-            1 ether,
-            0.1 ether,
-            address(flashHandler),
-            ""
-        );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidAsset.selector, invalidAsset));
+        flashHandler.executeOperation(invalidAsset, 1 ether, 0.1 ether, address(flashHandler), "");
     }
 
     // ============ QUOTE FUNCTION TESTS ============
@@ -519,7 +444,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         (uint256 tokenId,) = _createPosition(user, 1 ether, desiredCollateral);
 
         // Get quote for closing
-        (uint256 collateralOut, uint256 collateralToSwap, uint256 positionCollateral) = 
+        (uint256 collateralOut, uint256 collateralToSwap, uint256 positionCollateral) =
             flashHandler.quoteClosePosition(tokenId, 0);
 
         // Verify quote is reasonable
@@ -532,9 +457,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     function test_quoteClosePosition_revertIfInvalidPosition() public {
         uint256 invalidTokenId = 999;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));
         flashHandler.quoteClosePosition(invalidTokenId, 0);
     }
 
@@ -549,21 +472,13 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 maxDebt = 330000 * UNIT; // Tight debt limit
 
         uint256 flashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
-        (uint256 swapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
+        (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
         uint256 expectedDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
 
         // This should fail due to high slippage making the swap cost too much
         vm.prank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt)
-        );
-        flashHandler.increasePositionExposure{value: msgValue}(
-            0,
-            desiredCollateral,
-            0.05 ether,
-            maxDebt,
-            user
-        );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt));
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
     }
 
     function test_flashClosePosition_slippageProtection() public {
@@ -576,22 +491,20 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Authorize flash handler for repay and withdraw
         uint256 permissionBitmask = 1 << uint256(NectraNFT.Permission.Repay);
         permissionBitmask |= 1 << uint256(NectraNFT.Permission.Withdraw);
-        
+
         // Try to close with high minimum collateral out
         uint256 minCollateralOut = 0.99 ether; // Expecting 1% loss
         (uint256 actualCollateralOut,,) = flashHandler.quoteClosePosition(tokenId, 0);
 
         vm.startPrank(user);
-            nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
+        nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    NectraFlashHandler.InsufficientCollateralOut.selector,
-                    actualCollateralOut,
-                    minCollateralOut
-                )
-            );
-            flashHandler.flashClosePosition(tokenId, minCollateralOut, user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                NectraFlashHandler.InsufficientCollateralOut.selector, actualCollateralOut, minCollateralOut
+            )
+        );
+        flashHandler.flashClosePosition(tokenId, minCollateralOut, user);
         vm.stopPrank();
     }
 
@@ -604,14 +517,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
     function test_getCBTCPrice_revertIfStale() public {
         oracle.setStale(true);
-        
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                NectraFlashHandler.InvalidCBTCPrice.selector,
-                BTC_PRICE,
-                true
-            )
-        );
+
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidCBTCPrice.selector, BTC_PRICE, true));
         flashHandler.getCBTCPrice();
     }
 
@@ -619,19 +526,12 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
     function test_increasePositionExposure_revertIfInvalidPositionId() public {
         uint256 invalidTokenId = 999;
-        uint256 maxDebt = BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+        uint256 maxDebt =
+            BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.startPrank(user);
-            vm.expectRevert(
-                abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId)
-            );
-            flashHandler.increasePositionExposure{value: 1 ether}(
-                invalidTokenId,
-                2 ether,
-                0.05 ether,
-                maxDebt,
-                user
-            );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));
+        flashHandler.increasePositionExposure{value: 1 ether}(invalidTokenId, 2 ether, 0.05 ether, maxDebt, user);
         vm.stopPrank();
     }
 
@@ -639,31 +539,19 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 invalidTokenId = 999;
 
         vm.startPrank(user);
-            // Revert if tokenId is 0
-            vm.expectRevert(
-                abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, 0)
-            );
-            flashHandler.quoteClosePosition(
-                0,
-                0
-            );
+        // Revert if tokenId is 0
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, 0));
+        flashHandler.quoteClosePosition(0, 0);
 
-            // Revert if tokenId is invalid
-            vm.expectRevert(
-                abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId)
-            );
-            flashHandler.quoteClosePosition(
-                invalidTokenId,
-                0
-            );
+        // Revert if tokenId is invalid
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));
+        flashHandler.quoteClosePosition(invalidTokenId, 0);
         vm.stopPrank();
     }
 
     function test_receiveFunction_revertIfUnexpectedAmount() public {
         // The receive function should only accept expected amounts during operations
-        vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.InvalidAmount.selector, 1 ether, 0)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidAmount.selector, 1 ether, 0));
         payable(address(flashHandler)).transfer(1 ether);
     }
 
@@ -689,17 +577,15 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         uint256 extraCollateral = 2 ether;
         uint256 newDesiredCollateral = 15 ether;
-        uint256 newFlashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
-        (uint256 AdditionalSwapAmountIn, ) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
+        uint256 newFlashBorrowAmountWithFees =
+            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
+        (uint256 AdditionalSwapAmountIn,) =
+            satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + debt1;
 
         vm.prank(user);
         flashHandler.increasePositionExposure{value: extraCollateral}(
-            tokenId,
-            newDesiredCollateral,
-            0.05 ether,
-            newMaxDebt,
-            user
+            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user
         );
 
         // Verify position increased
@@ -714,21 +600,17 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
         uint256 totalDebtCost = debt2 * (UNIT + cargs.flashMintFee) / UNIT;
-        (uint256 swapAmountIn, ) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
+        (uint256 swapAmountIn,) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
         uint256 minCollateralOut = desiredCollateral - swapAmountIn;
 
         vm.prank(user);
-        uint256 collateralOut = flashHandler.flashClosePosition(
-            tokenId,
-            minCollateralOut,
-            user
-        );
+        uint256 collateralOut = flashHandler.flashClosePosition(tokenId, minCollateralOut, user);
 
         // Verify position closed and user received collateral
         (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokenId);
         assertEq(positionCollateral, 0, "Position should be closed");
         assertEq(positionDebt, 0, "Position should be closed");
-        
+
         uint256 reasonableCollateralOut = (initialCollateral + extraCollateral) * 0.97 ether / UNIT; // max 3% loss
         assertGe(collateralOut, reasonableCollateralOut, "Should receive reasonable collateral back");
 

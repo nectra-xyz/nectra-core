@@ -87,7 +87,8 @@ contract SatsumaHandlerTest is Test {
         uint256 amountOut = 1 ether; // 1 WCBTC
         uint160 limitSqrtPrice = 0;
 
-        (uint256 amountIn, uint160 sqrtPriceX96After) = handler.getNUSDToWCBTCExactOutputQuote(amountOut, limitSqrtPrice);
+        (uint256 amountIn, uint160 sqrtPriceX96After) =
+            handler.getNUSDToWCBTCExactOutputQuote(amountOut, limitSqrtPrice);
 
         // Should need approximately $65,000 nUSD for 1 WCBTC
         assertApproxEqRel(amountIn, BTC_PRICE, 0.01e18); // Within 1%
@@ -109,7 +110,8 @@ contract SatsumaHandlerTest is Test {
         uint256 amountOut = BTC_PRICE; // $65,000 nUSD
         uint160 limitSqrtPrice = 0;
 
-        (uint256 amountIn, uint160 sqrtPriceX96After) = handler.getWCBTCToNUSDExactOutputQuote(amountOut, limitSqrtPrice);
+        (uint256 amountIn, uint160 sqrtPriceX96After) =
+            handler.getWCBTCToNUSDExactOutputQuote(amountOut, limitSqrtPrice);
 
         // Should need approximately 1 WCBTC for $65,000 nUSD
         assertApproxEqRel(amountIn, 1 ether, 0.01e18); // Within 1%
@@ -396,7 +398,7 @@ contract SatsumaHandlerTest is Test {
 
         // Verify fees were accumulated in the DEX
         assertTrue(finalNUSDFees > initialNUSDFees, "DEX should have accumulated nUSD fees");
-        
+
         // Calculate expected fee
         uint256 expectedOutput = BTC_PRICE;
         uint256 expectedFee = expectedOutput * 0.01 ether / UNIT;
@@ -426,7 +428,7 @@ contract SatsumaHandlerTest is Test {
     function test_revert_swapCBTCToNUSDExactInput_incorrectValue() public {
         uint256 amountIn = 1 ether;
         uint256 incorrectValue = 0.5 ether;
-        
+
         vm.prank(trader);
         vm.expectRevert("Incorrect cBTC amount sent");
         handler.swapCBTCToNUSDExactInput{value: incorrectValue}(amountIn, 0, 0);
@@ -436,7 +438,7 @@ contract SatsumaHandlerTest is Test {
         uint256 amountOut = BTC_PRICE;
         uint256 amountInMaximum = 1.1 ether;
         uint256 incorrectValue = 0.5 ether;
-        
+
         vm.prank(trader);
         vm.expectRevert("Incorrect cBTC amount sent");
         handler.swapCBTCToNUSDExactOutput{value: incorrectValue}(amountOut, amountInMaximum, 0);
@@ -477,7 +479,7 @@ contract SatsumaHandlerTest is Test {
         handler.swapWCBTCToNUSDExactInput(wcbtcReceived, minNUSDBack, 0);
 
         uint256 userNUSDFinal = nusd.balanceOf(user);
-        
+
         // Should get back less than initial due to slippage/fees, but more than minimum
         assertTrue(userNUSDFinal >= userNUSDInitial - initialNUSD + minNUSDBack, "Should receive minimum nUSD back");
         assertTrue(userNUSDFinal < userNUSDInitial, "Should lose some value to fees");
