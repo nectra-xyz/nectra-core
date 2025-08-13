@@ -153,7 +153,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 finalNUSDBalance = nectraUSD.balanceOf(address(this));
         uint256 finalETHBalance = address(this).balance;
         uint256 finalFeeRecipientBalance = address(cargs.feeRecipientAddress).balance;
-        (, uint256 finalDebt) = nectraExternal.getPosition(tokenId);
+        uint256 finalDebt = nectraExternal.getPositionDebt(tokenId);
 
         assertEq(finalNUSDBalance, initialNUSDBalance, "NUSD balance should not change");
         assertEq(finalETHBalance, initialETHBalance, "ETH balance should not change");
@@ -247,11 +247,11 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             nectraExternal.getBucketDebt(MID_INTEREST_RATE), 20 ether, 1e11, "2% bucket should remain unchanged"
         );
 
-        (, uint256 lowPositionDebt) = nectraExternal.getPosition(tokenIdLow);
-        (, uint256 veryLowMidPositionDebt) = nectraExternal.getPosition(tokenIdVeryLowMid);
-        (, uint256 midPositionDebt) = nectraExternal.getPosition(tokenIdMid);
-        (, uint256 highPositionDebt) = nectraExternal.getPosition(tokenIdHigh);
-        (, uint256 newLowPositionDebt) = nectraExternal.getPosition(tokenIdNewLow);
+        uint256 lowPositionDebt = nectraExternal.getPositionDebt(tokenIdLow);
+        uint256 veryLowMidPositionDebt = nectraExternal.getPositionDebt(tokenIdVeryLowMid);
+        uint256 midPositionDebt = nectraExternal.getPositionDebt(tokenIdMid);
+        uint256 highPositionDebt = nectraExternal.getPositionDebt(tokenIdHigh);
+        uint256 newLowPositionDebt = nectraExternal.getPositionDebt(tokenIdNewLow);
 
         assertEq(lowPositionDebt, 0, "Original low interest position should be fully redeemed");
         assertApproxEqRel(veryLowMidPositionDebt, 10 ether, 1e11, "Very low mid position should be partially redeemed");
@@ -339,11 +339,11 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             nectraExternal.getBucketDebt(MID_INTEREST_RATE), 20 ether, 1e11, "2% bucket should remain unchanged"
         );
 
-        (, uint256 lowPositionDebt) = nectraExternal.getPosition(tokenIdLow);
-        (, uint256 veryLowMidPositionDebt) = nectraExternal.getPosition(tokenIdVeryLowMid);
-        (, uint256 midPositionDebt) = nectraExternal.getPosition(tokenIdMid);
-        (, uint256 highPositionDebt) = nectraExternal.getPosition(tokenIdHigh);
-        (, uint256 newLowPositionDebt) = nectraExternal.getPosition(tokenIdNewLow);
+        uint256 lowPositionDebt = nectraExternal.getPositionDebt(tokenIdLow);
+        uint256 veryLowMidPositionDebt = nectraExternal.getPositionDebt(tokenIdVeryLowMid);
+        uint256 midPositionDebt = nectraExternal.getPositionDebt(tokenIdMid);
+        uint256 highPositionDebt = nectraExternal.getPositionDebt(tokenIdHigh);
+        uint256 newLowPositionDebt = nectraExternal.getPositionDebt(tokenIdNewLow);
 
         assertEq(lowPositionDebt, 0, "Original low interest position should be fully redeemed");
         assertApproxEqRel(veryLowMidPositionDebt, 10 ether, 1e11, "Very low mid position should be partially redeemed");
@@ -407,7 +407,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 postPositionETHBalance = address(this).balance;
         uint256 postPositionNUSDBalance = nectraUSD.balanceOf(address(this));
 
-        (uint256 positionCollateral, uint256 positionDebt) = nectraExternal.getPosition(tokenId);
+        (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokenId);
         assertEq(positionCollateral, collateralAmount, "Incorrect collateral amount");
         assertEq(positionDebt, debtAmount, "Incorrect debt amount");
 
@@ -437,7 +437,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
 
         uint256 ethLoss = ethSpent - ethReceived;
 
-        (uint256 finalCollateral, uint256 finalDebt) = nectraExternal.getPosition(tokenId);
+        (uint256 finalCollateral, uint256 finalDebt,) = nectraExternal.getPosition(tokenId);
         // Due to redeeming 1 wei less and debt rounding 1 wei up, expected remaining debt of 2 wei
         assertEq(finalDebt, 2, "Position should have no remaining debt");
         assertApproxEqRel(

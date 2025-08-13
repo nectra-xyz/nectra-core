@@ -70,7 +70,7 @@ contract NectraRedeemBaseTest is NectraBaseTest {
     function _validatePositions() internal {
         for (uint256 i = 0; i < tokens.length; i++) {
             nectra.updatePosition(tokens[i]);
-            (uint256 positionCollateral, uint256 positionDebt) = nectraExternal.getPosition(tokens[i]);
+            (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokens[i]);
             assertApproxEqRel(positionCollateral, collateral[i], 1e11);
             assertApproxEqRel(positionDebt, debt[i], 1e11);
         }

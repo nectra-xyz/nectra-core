@@ -116,7 +116,11 @@ contract NectraExternal {
     /// @param tokenId ID of the position to query
     /// @return collateral Amount of collateral in the position
     /// @return debt Position debt including outstanding fees
-    function getPosition(uint256 tokenId) public view returns (uint256 collateral, uint256 debt) {
+    function getPosition(uint256 tokenId)
+        public
+        view
+        returns (uint256 collateral, uint256 debt, uint256 interestRate)
+    {
         (
             NectraLib.PositionState memory positionState,
             NectraLib.BucketState memory bucketState,
@@ -126,7 +130,8 @@ contract NectraExternal {
         return (
             positionState.collateral,
             NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up)
-                + NectraLib.calculateOutstandingFee(positionState, bucketState)
+                + NectraLib.calculateOutstandingFee(positionState, bucketState),
+            positionState.interestRate
         );
     }
 
@@ -146,7 +151,7 @@ contract NectraExternal {
     /// @param tokenId ID of the position to query
     /// @return Price where position becomes at risk of liquidatation
     function getPositionLiquidationPrice(uint256 tokenId) public view returns (uint256) {
-        (uint256 collateral, uint256 debt) = getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = getPosition(tokenId);
 
         return LIQUIDATION_RATIO.mulWad(debt).divWad(collateral);
     }
@@ -156,7 +161,7 @@ contract NectraExternal {
     /// @param tokenId ID of the position to query
     /// @return Price where position becomes at risk of full liquidation
     function getPositionFullLiquidationPrice(uint256 tokenId) public view returns (uint256) {
-        (uint256 collateral, uint256 debt) = getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = getPosition(tokenId);
 
         return FULL_LIQUIDATION_RATIO.mulWad(debt).divWad(collateral);
     }
@@ -170,15 +175,14 @@ contract NectraExternal {
         PositionData[] memory positions = new PositionData[](tokenIds.length);
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            (NectraLib.PositionState memory position,,) = nectra.getPositionState(tokenIds[i]);
-            uint256 debt = getPositionDebt(tokenIds[i]);
+            (uint256 collateral, uint256 debt, uint256 interestRate) = getPosition(tokenIds[i]);
             uint256 outstandingFee = getPositionOutstandingFee(tokenIds[i]);
 
             positions[i] = PositionData({
                 tokenId: tokenIds[i],
-                collateral: position.collateral,
+                collateral: collateral,
                 debt: debt,
-                interestRate: position.interestRate,
+                interestRate: interestRate,
                 outstandingFee: outstandingFee
             });
         }

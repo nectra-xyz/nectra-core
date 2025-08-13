@@ -66,7 +66,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     }
 
     function test_should_revert_for_position_not_eligible_for_full_liquidation() public {
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokens[1]);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokens[1]);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 cratio = collateral * collateralPrice / debt;
 
@@ -98,7 +98,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_allow_full_liquidation_when_position_cratio_is_below_full_liquidation_ratio() public {
         // uint256 tokenId = tokens[1];
-        // (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        // (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         // uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         // uint256 fullLiquidationPrice = cargs.fullLiquidationRatio * (debt + closingFee) / collateral;
 
@@ -187,7 +187,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_realize_outstanding_fees_when_checking_cratio() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         uint256 feeRecipientBalanceBefore = nectraUSD.balanceOf(feeRecipient);
         // Move position cratio to exactly the full liquidation ratio
@@ -216,7 +216,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_realize_outstanding_interest_when_checking_cratio() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         // calculate the time shift required to make the position eligible for full liquidation due to interest
@@ -259,7 +259,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_not_redistribute_back_into_liquidated_position_when_reopened() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 fullLiquidationPrice = cargs.fullLiquidationRatio * (debt + closingFee) / collateral;
@@ -282,7 +282,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_not_socialise_into_new_position_when_opened_in_same_bucket() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
 
@@ -305,7 +305,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_not_socialise_into_new_position_when_opened_in_different_bucket() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
 
@@ -330,7 +330,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     function test_should_socialise_into_existing_position_in_same_bucket_when_updated() public {
         uint256 tokenId = tokens[1];
         uint256 tokenId2 = tokens[2];
-        (uint256 collateral2,) = nectraExternal.getPosition(tokenId2);
+        uint256 collateral2 = nectraExternal.getPositionCollateral(tokenId2);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
 
@@ -358,7 +358,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     function test_should_socialise_into_existing_position_in_different_bucket_when_updated() public {
         uint256 tokenId = tokens[1];
         uint256 tokenId2 = tokens[3];
-        (uint256 collateral2,) = nectraExternal.getPosition(tokenId2);
+        uint256 collateral2 = nectraExternal.getPositionCollateral(tokenId2);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
 

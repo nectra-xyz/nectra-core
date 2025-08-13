@@ -104,7 +104,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         // Calculate total debt across all positions
         uint256 totalDebt = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
-            (, uint256 positionDebt) = nectraExternal.getPosition(tokens[i]);
+            uint256 positionDebt = nectraExternal.getPositionDebt(tokens[i]);
             totalDebt += positionDebt;
         }
 
@@ -113,7 +113,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         uint256 initialETHBalance = address(this).balance;
         uint256[] memory initialCollateral = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            (initialCollateral[i],) = nectraExternal.getPosition(tokens[i]);
+            initialCollateral[i] = nectraExternal.getPositionCollateral(tokens[i]);
         }
 
         // Approve and redeem full amount
@@ -122,7 +122,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
 
         // Verify all positions have 0 debt after redemption
         for (uint256 i = 0; i < tokens.length - 2; i++) {
-            (, uint256 finalDebt) = nectraExternal.getPosition(tokens[i]);
+            uint256 finalDebt = nectraExternal.getPositionDebt(tokens[i]);
             assertEq(finalDebt, 0, "Position should have 0 debt after redemption");
         }
 
@@ -142,7 +142,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         // Verify position owners can still claim remaining collateral
         for (uint256 i = 0; i < tokens.length - 2; i++) {
             uint256 balanceBeforeClaim = address(this).balance;
-            (uint256 currentCollateral, uint256 currentDebt) = nectraExternal.getPosition(tokens[i]);
+            (uint256 currentCollateral, uint256 currentDebt,) = nectraExternal.getPosition(tokens[i]);
 
             // Claim remaining collateral
             nectra.modifyPosition(tokens[i], type(int256).min, type(int256).min, interestRates[i], "");
@@ -154,20 +154,20 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             assertEq(collateralClaimed, currentCollateral, "Claimed collateral should match remaining collateral");
 
             // Verify position is fully closed
-            (uint256 finalCollateral, uint256 finalDebt) = nectraExternal.getPosition(tokens[i]);
+            (uint256 finalCollateral, uint256 finalDebt,) = nectraExternal.getPosition(tokens[i]);
             assertEq(finalCollateral, 0, "Position should have no remaining collateral");
             assertEq(finalDebt, 0, "Position should have no remaining debt");
         }
 
         // Due to 1 wei of rounding the last two positions will have some debt left
         nectra.modifyPosition(tokens[5], type(int256).min, type(int256).min, interestRates[5], "");
-        (uint256 finalCollateral1, uint256 finalDebt1) = nectraExternal.getPosition(tokens[5]);
+        (uint256 finalCollateral1, uint256 finalDebt1,) = nectraExternal.getPosition(tokens[5]);
         assertEq(finalCollateral1, 0, "Position should have no remaining collateral");
         assertEq(finalDebt1, 0, "Position should have no remaining debt");
 
         // TODO: Last position cant fully withdraw due to rounding losses on collateral
         nectra.modifyPosition(tokens[6], type(int256).min, type(int256).min, interestRates[6], "");
-        (uint256 finalCollateral2, uint256 finalDebt2) = nectraExternal.getPosition(tokens[6]);
+        (uint256 finalCollateral2, uint256 finalDebt2,) = nectraExternal.getPosition(tokens[6]);
         assertEq(finalCollateral2, 0, "Position should have no remaining collateral");
         assertEq(finalDebt2, 0, "Position should have no remaining debt");
     }

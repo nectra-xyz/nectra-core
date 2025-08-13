@@ -2,7 +2,14 @@
 pragma solidity ^0.8.4;
 
 interface INectraNFT {
-    type Permission is uint8;
+    //type Permission is uint8;
+    enum Permission {
+        Borrow,
+        Withdraw,
+        Repay,
+        Deposit,
+        AdjustInterest
+    }
 
     error AccountBalanceOverflow();
     error BalanceQueryForZeroAddress();
@@ -42,4 +49,5 @@ interface INectraNFT {
     function getTokenIdsForAddress(address owner) external view returns (uint256[] memory);
     function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
     function tokenByIndex(uint256 index) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
 }
