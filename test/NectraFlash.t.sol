@@ -50,7 +50,7 @@ contract NectraFlashTest is NectraBaseTest {
         uint256 expectedDebt = uint256(debtBeforeFee) + (uint256(debtBeforeFee) * cargs.openFeePercentage / 1 ether);
         _checkPosition(tokenId, positionCollateral, expectedDebt, interestRate);
         // Updated positionDebt to be exact amount in the position
-        (, positionDebt) = nectraExternal.getPosition(tokenId);
+        positionDebt = nectraExternal.getPositionDebt(tokenId);
 
         // Default callback params
         callbackParams = CallbackParams({

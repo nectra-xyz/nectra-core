@@ -218,7 +218,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
     function test_should_realise_oustanding_interest_before_partial_liquidation() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         //uint256 closingFee = nectra.getClosingFee(tokenId, debt);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         // calculate the time shift required to make the position eligible for full liquidation due to interest
@@ -241,7 +241,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
     function test_should_realise_oustanding_fees_before_partial_liquidation() public {
         uint256 tokenId = tokens[1];
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         //uint256 closingFee = nectra.getClosingFee(tokenId, debt);
 
         // Move position cratio to exactly the partial liquidation ratio
@@ -288,7 +288,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         );
 
         // check that position is at issuance ratio, don't need to consider closing fee because it is paid
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 cratio = collateral.mulWad(liquidationAmounts.liquidationPrice).divWad(debt);
         // Within 1 wei of eachother because of 1 wei rounding
         assertApproxEqRel(cratio, cargs.issuanceRatio, 1, "Position is not at issuance ratio");
@@ -574,7 +574,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
         // check that position is in healthy state
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         assertGt(
             collateral.mulWad(liquidationAmounts.liquidationPrice).divWad(debt),
             cargs.issuanceRatio,
@@ -635,7 +635,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         returns (PartialLiquidationAmounts memory liquidationAmounts)
     {
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
-        (liquidationAmounts.initialCollateral, liquidationAmounts.initialDebt) = nectraExternal.getPosition(tokenId);
+        (liquidationAmounts.initialCollateral, liquidationAmounts.initialDebt,) = nectraExternal.getPosition(tokenId);
         liquidationAmounts.closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
 
         liquidationAmounts.liquidationPrice = nectraExternal.getPositionLiquidationPrice(tokenId);

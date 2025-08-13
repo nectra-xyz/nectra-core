@@ -76,7 +76,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
     }
 
     function test_should_fail_when_close_but_not_withdraw() public {
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(defaultTokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(defaultTokenId);
         nectraUSD.approve(address(nectra), debt);
         // attempt to repay all debt but not withdraw collateral
         vm.expectRevert(abi.encodeWithSelector(INectra.MinimumDebtNotMet.selector, 0, cargs.minimumDebt));
@@ -325,7 +325,6 @@ contract NectraModifyPositionTest is NectraBaseTest {
     }
 
     function test_should_pass_when_caller_is_owner_or_approved_to_decrease_interest_rate() public {
-        (NectraLib.PositionState memory positionState,,) = nectra.getPositionState(defaultTokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
         // position owner can decrease interest rate
@@ -674,7 +673,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
 
         // close position
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectraUSD.approve(address(nectra), debt);
         nectra.modifyPosition(tokenId, -int256(collateral), -int256(debt), cargs.minimumInterestRate, "");
 
@@ -713,7 +712,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, cargs.minimumInterestRate);
 
         // repay debt
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectraUSD.approve(address(nectra), UNIT);
         nectra.modifyPosition(tokenId, 0, -1 ether, cargs.minimumInterestRate, "");
 
@@ -746,7 +745,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, cargs.minimumInterestRate);
 
         // borrow debt
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectra.modifyPosition(tokenId, 0, 1 ether, cargs.minimumInterestRate, "");
 
         // Note:when borrowing the outstanding fee is increased by
@@ -780,7 +779,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, cargs.minimumInterestRate);
 
         // deposit collateral
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectra.modifyPosition{value: 1 ether}(tokenId, 1 ether, 0, cargs.minimumInterestRate, "");
 
         // confirm position is correct after depositing
@@ -812,7 +811,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, cargs.minimumInterestRate);
 
         // withdraw collateral
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectra.modifyPosition(tokenId, -1 ether, 0, cargs.minimumInterestRate, "");
 
         // confirm position is correct after withdrawing
@@ -977,7 +976,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         oracle.setStale(true);
         uint256 collateralBalanceBefore = address(this).balance;
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(defaultTokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(defaultTokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
         // position owner try to close position
@@ -993,7 +992,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     // Amount caps
     function test_should_cap_withdrawal_amount_at_available_collateral() public {
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(defaultTokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(defaultTokenId);
         uint256 collateralBalanceBefore = address(this).balance;
 
         // close position but withdraw more collateral than what is available
@@ -1009,7 +1008,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
     }
 
     function test_should_cap_repayment_amount_at_available_debt() public {
-        (uint256 collateral, uint256 debt) = nectraExternal.getPosition(defaultTokenId);
+        (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(defaultTokenId);
 
         deal(address(nectraUSD), address(this), debt * 2);
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
