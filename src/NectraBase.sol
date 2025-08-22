@@ -34,7 +34,7 @@ contract NectraBase {
     /// @param lastGlobalAccumulatedLiquidatedDebtPerShare Last global liquidated debt per share
     /// @param lastUpdateTime Timestamp of last bucket update
     struct Bucket {
-        uint256 collateral;
+        uint256 collateral; // @audit add comment for this
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
