@@ -34,6 +34,7 @@ library NectraLib {
     /// @notice State tracking for an interest rate bucket
     /// @param interestRate Interest rate of the bucket
     /// @param epoch Current epoch of the bucket
+    /// @param collateral Amount of collateral in the bucket
     /// @param totalDebtShares Sum of all debt shares held by positions in the bucket
     /// @param globalDebtShares Number of shares held by the bucket in the global state
     /// @param accumulatedLiquidatedCollateralPerShare Accumulated liquidated collateral per share
@@ -45,7 +46,7 @@ library NectraLib {
     struct BucketState {
         uint256 interestRate;
         uint256 epoch;
-        uint256 collateral; // @audit add comment for this
+        uint256 collateral;
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -117,10 +118,6 @@ library NectraLib {
                     - initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare;
 
                 uint256 newCollateral = collateralPerShareDiff.mulWad(initialBucketState.globalDebtShares);
-                console2.log("initialBucketState.globalDebtShares", initialBucketState.globalDebtShares);
-                console2.log("initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare", initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare);
-                console2.log("initialGlobalState.accumulatedLiquidatedCollateralPerShare", initialGlobalState.accumulatedLiquidatedCollateralPerShare);
-                console2.log("newCollateral", newCollateral);
 
                 bucket.accumulatedLiquidatedCollateralPerShare +=
                     newCollateral.divWad(initialBucketState.totalDebtShares);
@@ -306,7 +303,7 @@ library NectraLib {
     /// @param dstBucket The destination bucket
     /// @param srcBucket The source bucket
     /// @param global The global state
-    function migrateBucket( // @audit I think this function should update the buckets collateral value, to test
+    function migrateBucket(
         PositionState memory position,
         BucketState memory dstBucket,
         BucketState memory srcBucket,
@@ -317,7 +314,7 @@ library NectraLib {
 
         srcBucket.globalDebtShares = NectraMathLib.saturatingAdd(srcBucket.globalDebtShares, -int256(globalDebtShares));
         srcBucket.totalDebtShares = NectraMathLib.saturatingAdd(srcBucket.totalDebtShares, -int256(position.debtShares));
-        // srcBucket.collateral = NectraMathLib.saturatingAdd(srcBucket.collateral, -int256(position.collateral));
+        srcBucket.collateral = NectraMathLib.saturatingAdd(srcBucket.collateral, -int256(position.collateral));
 
         uint256 debtShares = debt.convertToShares(
             calculateBucketDebt(dstBucket, global, NectraMathLib.Rounding.Down),
@@ -327,7 +324,7 @@ library NectraLib {
 
         dstBucket.globalDebtShares = NectraMathLib.saturatingAdd(dstBucket.globalDebtShares, int256(globalDebtShares));
         dstBucket.totalDebtShares = NectraMathLib.saturatingAdd(dstBucket.totalDebtShares, int256(debtShares));
-        // dstBucket.collateral = NectraMathLib.saturatingAdd(dstBucket.collateral, int256(position.collateral));
+        dstBucket.collateral = NectraMathLib.saturatingAdd(dstBucket.collateral, int256(position.collateral));
 
         NectraLib.copy(
             position,

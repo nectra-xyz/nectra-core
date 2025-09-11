@@ -25,6 +25,7 @@ contract NectraBase {
     }
 
     /// @notice State tracking for an interest rate bucket
+    /// @param collateral Amount of collateral in the bucket
     /// @param totalDebtShares Total debt shares for all positions in this bucket
     /// @param globalDebtShares Debt shares this bucket owns in the global state
     /// @param accumulatedLiquidatedCollateralPerShare Accumulated liquidated collateral per share
@@ -34,7 +35,7 @@ contract NectraBase {
     /// @param lastGlobalAccumulatedLiquidatedDebtPerShare Last global liquidated debt per share
     /// @param lastUpdateTime Timestamp of last bucket update
     struct Bucket {
-        uint256 collateral; // @audit add comment for this
+        uint256 collateral;
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;

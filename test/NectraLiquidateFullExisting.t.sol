@@ -386,7 +386,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     function test_should_update_bucket_collateral_when_liquidating_full() public {
         uint256 tokenId = tokens[3];
         uint256 bucket = defaultInterestRate + cargs.interestRateIncrement;
-        (uint256 collateral,) = nectraExternal.getPosition(tokenId);
+        (uint256 collateral,,) = nectraExternal.getPosition(tokenId);
         
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
         (NectraLib.BucketState memory bucketBefore,) = nectra.getBucketState(bucket);
