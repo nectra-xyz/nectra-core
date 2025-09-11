@@ -892,8 +892,8 @@ contract NectraModifyPositionTest is NectraBaseTest {
         (NectraLib.BucketState memory newBucketState, ) = nectra.getBucketState(newBucket);
 
         // check that the bucket collateral has changed
-        assertEq(initialBucketState.collateral, defaultCollateral, "Bucket collateral has not changed");
-        assertEq(newBucketState.collateral, 0, "Bucket collateral has not changed");
+        assertEq(initialBucketState.collateral, defaultCollateral, "Initial bucket collateral is incorrect");
+        assertEq(newBucketState.collateral, 0, "New bucket collateral is incorrect");
 
         // migrate position to new bucket
         nectra.modifyPosition(tokenId, 0, 0, newBucket, "");
@@ -902,8 +902,8 @@ contract NectraModifyPositionTest is NectraBaseTest {
         (initialBucketState, ) = nectra.getBucketState(initialBucket);
         (newBucketState, ) = nectra.getBucketState(newBucket);
 
-        assertEq(initialBucketState.collateral, 0, "Bucket collateral has not changed");
-        assertEq(newBucketState.collateral, defaultCollateral, "Bucket collateral has not changed");
+        assertEq(initialBucketState.collateral, 0, "Initial bucket collateral has not changed");
+        assertEq(newBucketState.collateral, defaultCollateral, "New bucket collateral has not changed");
     }
 
     // withdraw should be reentrant safe

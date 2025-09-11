@@ -44,6 +44,7 @@ interface INectra {
         uint256 liquidationFee,
         address indexed liquidator
     );
+    event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
 
     function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay, uint256 interestRate)
         external

@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {SafeCastLib} from "src/lib/SafeCastLib.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title NectraLib
 /// @notice Core library containing state update and calculation functions for the Nectra protocol
@@ -116,6 +117,10 @@ library NectraLib {
                     - initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare;
 
                 uint256 newCollateral = collateralPerShareDiff.mulWad(initialBucketState.globalDebtShares);
+                console2.log("initialBucketState.globalDebtShares", initialBucketState.globalDebtShares);
+                console2.log("initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare", initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare);
+                console2.log("initialGlobalState.accumulatedLiquidatedCollateralPerShare", initialGlobalState.accumulatedLiquidatedCollateralPerShare);
+                console2.log("newCollateral", newCollateral);
 
                 bucket.accumulatedLiquidatedCollateralPerShare +=
                     newCollateral.divWad(initialBucketState.totalDebtShares);

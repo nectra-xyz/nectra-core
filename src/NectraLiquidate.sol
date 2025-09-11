@@ -7,6 +7,8 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
+import {console2} from "forge-std/console2.sol";
+
 
 /// @title NectraLiquidate
 /// @notice Handles liquidation of undercollateralized positions
@@ -151,6 +153,12 @@ abstract contract NectraLiquidate is NectraBase {
             (liquidatedDebt + FULL_LIQUIDATOR_FEE).divWad(global.totalDebtShares);
         global.accumulatedLiquidatedCollateralPerShare += liquidatedCollateral.divWad(global.totalDebtShares);
         global.unrealizedLiquidatedDebt += liquidatedDebt + FULL_LIQUIDATOR_FEE;
+
+        console2.log("\nAfter Position Removed");
+        console2.log("liquidatedCollateral", liquidatedCollateral);
+        console2.log("global.totalDebtShares", global.totalDebtShares);
+        console2.log("collateralPerShare", liquidatedCollateral.divWad(global.totalDebtShares));
+        console2.log("global.accumulatedLiquidatedCollateralPerShare", global.accumulatedLiquidatedCollateralPerShare);
 
         position = NectraLib.PositionState({
             tokenId: tokenId,

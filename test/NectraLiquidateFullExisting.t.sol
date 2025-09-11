@@ -383,6 +383,26 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         _checkPosition(tokenId2, expectedCollateral, expectedDebt, defaultInterestRate + cargs.interestRateIncrement);
     }
 
+    function test_should_update_bucket_collateral_when_liquidating_full() public {
+        uint256 tokenId = tokens[3];
+        uint256 bucket = defaultInterestRate + cargs.interestRateIncrement;
+        (uint256 collateral,) = nectraExternal.getPosition(tokenId);
+        
+        uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
+        (NectraLib.BucketState memory bucketBefore,) = nectra.getBucketState(bucket);
+        uint256 expectedCollateral = bucketBefore.collateral - collateral;
+
+        oracle.setCurrentPrice(fullLiquidationPrice);
+        nectra.fullLiquidate(tokenId);
+
+        // check that the position is fully liquidated
+        _checkPosition(tokenId, 0, 0, bucket);
+
+        // check that the bucket collateral is updated correctly
+        (NectraLib.BucketState memory bucketAfter,) = nectra.getBucketState(bucket);
+        assertEq(bucketAfter.collateral, expectedCollateral, "Bucket collateral is incorrect");
+    }
+
     // Flash loan receiver
     function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
         external
