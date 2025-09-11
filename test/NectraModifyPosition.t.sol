@@ -875,6 +875,36 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, cargs.minimumInterestRate);
     }
 
+    function test_migrating_to_a_bucket_should_change_bucket_collateral() public {
+        uint256 initialBucket = cargs.minimumInterestRate;
+        uint256 newBucket = cargs.minimumInterestRate + cargs.interestRateIncrement;
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
+            0,
+            int256(defaultCollateral),
+            int256(defaultDebt),
+            initialBucket,
+            ""
+        );
+
+        // get both bucket collateral
+        (NectraLib.BucketState memory initialBucketState, ) = nectra.getBucketState(initialBucket);
+        (NectraLib.BucketState memory newBucketState, ) = nectra.getBucketState(newBucket);
+
+        // check that the bucket collateral has changed
+        assertEq(initialBucketState.collateral, defaultCollateral, "Initial bucket collateral is incorrect");
+        assertEq(newBucketState.collateral, 0, "New bucket collateral is incorrect");
+
+        // migrate position to new bucket
+        nectra.modifyPosition(tokenId, 0, 0, newBucket, "");
+
+        // confirm bucket collateral is correct after migration
+        (initialBucketState, ) = nectra.getBucketState(initialBucket);
+        (newBucketState, ) = nectra.getBucketState(newBucket);
+
+        assertEq(initialBucketState.collateral, 0, "Initial bucket collateral has not changed");
+        assertEq(newBucketState.collateral, defaultCollateral, "New bucket collateral has not changed");
+    }
+
     // withdraw should be reentrant safe
     function test_should_be_reentrant_safe() public {
         // create position

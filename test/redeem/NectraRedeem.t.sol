@@ -172,6 +172,23 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         nectra.redeem(160 ether + 1 wei, 0);
     }
 
+    function test_should_not_redeem_from_insolvent_bucket() public {
+        // collateral 100, debt = 5
+        // 100 * 1.2 / 1.4 ~= 85
+
+        nectra.modifyPosition(tokens[2], 0, 80 ether, interestRates[2], "");
+
+        uint256 initialBucketDebt = nectraExternal.getBucketDebt(interestRates[2]);
+        assertApproxEqRel(initialBucketDebt, 85 ether, 1e11, "Initial bucket debt should be 85 ether");
+
+        oracle.setCurrentPrice(0.6 ether);
+
+        nectra.redeem(60 ether, 0);
+
+        uint256 finalBucketDebt = nectraExternal.getBucketDebt(interestRates[2]);
+        assertApproxEqRel(finalBucketDebt, 85 ether, 1e11, "Final bucket debt should remain 85 ether");
+    }
+
     function test_findFirstSet_bucket_selection_adjacent() public {
         uint256 LOW_INTEREST_RATE = 0.005 ether;
         uint256 VERY_LOW_MID_RATE = 0.006 ether;
@@ -443,5 +460,30 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         assertApproxEqRel(
             finalCollateral, collateralAmount - actualCollateralRedeemed, 1e11, "Incorrect remaining collateral"
         );
+    }
+
+    function test_redemption_should_skip_if_bucket_is_insolvant() public {
+        (uint256 currentPrice,) = oracle.getLatestPrice();
+        uint256 collateralAmount = 10 ether;
+        uint256 collateralValue = collateralAmount.mulWad(currentPrice);
+        uint256 maxDebt = collateralValue.divWad(cargs.issuanceRatio);
+        uint256 targetPrice = collateralAmount.mulWad(cargs.fullLiquidationRatio + cargs.openFeePercentage).divWad(maxDebt);
+
+        // open positon at lowest bucket
+        (uint256 positionId,,,,) = nectra.modifyPosition{ value: collateralAmount }(0, int256(collateralAmount), int256(maxDebt), cargs.minimumInterestRate, "");
+
+        // drop cratio of bucket by dropping price
+        oracle.setCurrentPrice(targetPrice);
+
+        // perform redemption, it should skip the lowest bucket
+        uint256 lowestBucketDebtBefore = nectraExternal.getBucketDebt(cargs.minimumInterestRate);
+        uint256 nextBucketDebtBefore = nectraExternal.getBucketDebt(0.05 ether);
+        nectra.redeem(1 ether, 0);
+        uint256 lowestBucketDebtAfter = nectraExternal.getBucketDebt(cargs.minimumInterestRate);
+        uint256 nextBucketDebtAfter = nectraExternal.getBucketDebt(0.05 ether);
+
+        assertEq(lowestBucketDebtAfter, lowestBucketDebtBefore, "Lowest bucket redeemed");
+        assertEq(nextBucketDebtAfter, nextBucketDebtAfter - 1 ether, "Next not redeemed");
+
     }
 }

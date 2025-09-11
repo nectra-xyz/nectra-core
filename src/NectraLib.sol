@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {SafeCastLib} from "src/lib/SafeCastLib.sol";
+import {console2} from "forge-std/console2.sol";
 
 /// @title NectraLib
 /// @notice Core library containing state update and calculation functions for the Nectra protocol
@@ -44,6 +45,7 @@ library NectraLib {
     struct BucketState {
         uint256 interestRate;
         uint256 epoch;
+        uint256 collateral; // @audit add comment for this
         uint256 totalDebtShares;
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -115,9 +117,14 @@ library NectraLib {
                     - initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare;
 
                 uint256 newCollateral = collateralPerShareDiff.mulWad(initialBucketState.globalDebtShares);
+                console2.log("initialBucketState.globalDebtShares", initialBucketState.globalDebtShares);
+                console2.log("initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare", initialBucketState.lastGlobalAccumulatedLiquidatedCollateralPerShare);
+                console2.log("initialGlobalState.accumulatedLiquidatedCollateralPerShare", initialGlobalState.accumulatedLiquidatedCollateralPerShare);
+                console2.log("newCollateral", newCollateral);
 
                 bucket.accumulatedLiquidatedCollateralPerShare +=
                     newCollateral.divWad(initialBucketState.totalDebtShares);
+                bucket.collateral += newCollateral;
             }
 
             // calculate and apply interest
@@ -287,6 +294,7 @@ library NectraLib {
 
         bucket.totalDebtShares = NectraMathLib.saturatingAdd(bucket.totalDebtShares, debtShares);
         bucket.globalDebtShares = NectraMathLib.saturatingAdd(bucket.globalDebtShares, globalDebtShares);
+        bucket.collateral = NectraMathLib.saturatingAdd(bucket.collateral, collateralDiff);
 
         global.totalDebtShares = NectraMathLib.saturatingAdd(global.totalDebtShares, globalDebtShares);
         global.debt = NectraMathLib.saturatingAdd(global.debt, debtDiff);
@@ -298,7 +306,7 @@ library NectraLib {
     /// @param dstBucket The destination bucket
     /// @param srcBucket The source bucket
     /// @param global The global state
-    function migrateBucket(
+    function migrateBucket( // @audit I think this function should update the buckets collateral value, to test
         PositionState memory position,
         BucketState memory dstBucket,
         BucketState memory srcBucket,
@@ -309,6 +317,7 @@ library NectraLib {
 
         srcBucket.globalDebtShares = NectraMathLib.saturatingAdd(srcBucket.globalDebtShares, -int256(globalDebtShares));
         srcBucket.totalDebtShares = NectraMathLib.saturatingAdd(srcBucket.totalDebtShares, -int256(position.debtShares));
+        // srcBucket.collateral = NectraMathLib.saturatingAdd(srcBucket.collateral, -int256(position.collateral));
 
         uint256 debtShares = debt.convertToShares(
             calculateBucketDebt(dstBucket, global, NectraMathLib.Rounding.Down),
@@ -318,6 +327,7 @@ library NectraLib {
 
         dstBucket.globalDebtShares = NectraMathLib.saturatingAdd(dstBucket.globalDebtShares, int256(globalDebtShares));
         dstBucket.totalDebtShares = NectraMathLib.saturatingAdd(dstBucket.totalDebtShares, int256(debtShares));
+        // dstBucket.collateral = NectraMathLib.saturatingAdd(dstBucket.collateral, int256(position.collateral));
 
         NectraLib.copy(
             position,
@@ -373,6 +383,7 @@ library NectraLib {
     /// @param src The source bucket state
     function copy(NectraLib.BucketState memory dest, NectraLib.BucketState memory src) internal pure {
         dest.interestRate = src.interestRate;
+        dest.collateral = src.collateral;
         dest.totalDebtShares = src.totalDebtShares;
         dest.globalDebtShares = src.globalDebtShares;
         dest.accumulatedLiquidatedCollateralPerShare = src.accumulatedLiquidatedCollateralPerShare;

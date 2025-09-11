@@ -411,6 +411,9 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
             "global debt per share not updated correctly"
         );
 
+        // confirm that the bucket collateral is updated correctly
+        assertEq(bucketAfter.collateral, bucketBefore.collateral - liquidationAmounts.collateralToLiquidate, "bucket collateral not updated correctly");
+
         // check postion debt shares are updated correctly
         uint256 positionDebtShareDecrease = (liquidationAmounts.debtToLiquidate - liquidationAmounts.closingFee).mulWad(
             bucketBefore.totalDebtShares
