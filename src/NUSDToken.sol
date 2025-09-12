@@ -2,21 +2,29 @@
 pragma solidity ^0.8.23;
 
 import {ERC20} from "src/lib/ERC20.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title NUSDToken
 /// @notice ERC20 token representing the Nectra USD stablecoin
 /// @dev Extends ERC20 with minting and burning capabilities restricted to the Nectra contract
-contract NUSDToken is ERC20 {
+contract NUSDToken is ERC20, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     string internal constant NAME = "Nectra USD";
     string internal constant SYMBOL = "NUSD";
 
-    address internal immutable MINTER;
+    address public MINTER;
 
     error NotMinter();
 
+    /// @notice Initializes the token
+    /// @param owner Address of the owner of the token
     /// @param minter Address of the contract that can mint and burn tokens
-    constructor(address minter) {
+    function initialize(address owner, address minter) public initializer {
         MINTER = minter;
+        
+        __Ownable_init(owner);
+        __UUPSUpgradeable_init();
     }
 
     /// @notice Returns the name of the token
@@ -65,4 +73,9 @@ contract NUSDToken is ERC20 {
     {
         super.permit(owner, spender, value, deadline, v, r, s);
     }
+
+    /// @notice Authorizes the upgrade of the implementation contract
+    /// @dev Only the owner can upgrade the implementation contract
+    /// @param newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

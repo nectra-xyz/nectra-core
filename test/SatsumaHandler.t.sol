@@ -9,6 +9,8 @@ import {WCBTCMock} from "test/mocks/WCBTCMock.sol";
 import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
 
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+
 import {console} from "forge-std/console.sol";
 
 contract SatsumaHandlerTest is Test {
@@ -30,7 +32,12 @@ contract SatsumaHandlerTest is Test {
         oracle = new OracleAggregatorMock(BTC_PRICE);
 
         // Deploy tokens
-        nusd = new NUSDToken(nectra);
+        address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new NUSDToken()),
+            abi.encodeCall(NUSDToken.initialize, (address(this), nectra))
+        );
+        nusd = NUSDToken(nusdProxy);
+
         wcbtc = new WCBTCMock();
 
         // Deploy DEX mock

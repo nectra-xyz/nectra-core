@@ -4,6 +4,11 @@ out = "out"
 libs = ["lib"]
 via_ir = true
 optimizer = true
+# Extra config recommended by OpenZeppelin -- https://docs.openzeppelin.com/upgrades-plugins/foundry-upgrades#before_running
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 [fuzz]

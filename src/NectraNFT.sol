@@ -2,11 +2,14 @@
 pragma solidity ^0.8.23;
 
 import {ERC721} from "src/lib/ERC721.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title NectraNFT
 /// @notice ERC721 token representing positions in the Nectra protocol
 /// @dev Extends ERC721 with permission system and enumerable balance tracking
-contract NectraNFT is ERC721 {
+contract NectraNFT is ERC721, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     enum Permission {
         Borrow,
         Withdraw,
@@ -22,7 +25,7 @@ contract NectraNFT is ERC721 {
     string internal constant NAME = "Nectra Position";
     string internal constant SYMBOL = "NTP";
 
-    address internal immutable NECTRA_ADDRESS;
+    address internal NECTRA_ADDRESS;
 
     uint256 internal _latestTokenId;
 
@@ -33,9 +36,14 @@ contract NectraNFT is ERC721 {
     mapping(uint256 tokenId => uint256) private _ownedTokensIndex;
     mapping(uint256 tokenId => uint256) private _allTokensIndex;
 
+    /// @notice Initializes the token
+    /// @param owner Address of the owner of the token
     /// @param nectraAddress Address of the main Nectra contract
-    constructor(address nectraAddress) {
+    function initialize(address owner, address nectraAddress) public initializer {
         NECTRA_ADDRESS = nectraAddress;
+
+        __Ownable_init(owner);
+        __UUPSUpgradeable_init();
     }
 
     /// @notice Returns the name of the token
@@ -264,4 +272,9 @@ contract NectraNFT is ERC721 {
         }
         return tokenIds;
     }
+
+    /// @notice Authorizes the upgrade of the implementation contract
+    /// @dev Required by UUPSUpgradeable to authorize upgrades
+    /// @param newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

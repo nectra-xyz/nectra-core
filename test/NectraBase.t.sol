@@ -9,6 +9,10 @@ import {Nectra, NectraBase} from "src/Nectra.sol";
 import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
 import {NectraLib} from "src/NectraLib.sol";
 import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
+import {InitialImplementation} from "src/initialImplementation.sol";
+
+// use UnsafeUpgrades to deploy and upgrade the contracts during testing only
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 abstract contract NectraBaseTest is Test {
     uint256 constant UNIT = 1 ether;
@@ -50,8 +54,20 @@ abstract contract NectraBaseTest is Test {
 
     function setUp() public virtual {
         oracle = new OracleAggregatorMock(1.2 ether);
-        nectraNFT = new NectraNFT(vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2));
-        nectraUSD = new NUSDToken(vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1));
+
+        // deploy nft with the initial implementation to get an address for core
+        address nftProxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new InitialImplementation()),
+            abi.encodeCall(InitialImplementation.initialize, ())
+        );
+        nectraNFT = NectraNFT(nftProxy);
+        
+        // deploy nUSD with the initial implementation to get an address for core
+        address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new InitialImplementation()),
+            abi.encodeCall(InitialImplementation.initialize, ())
+        );
+        nectraUSD = NUSDToken(nusdProxy);
 
         Nectra.ConstructorArgs memory _cargs = cargs;
         _cargs.nectraNFTAddress = address(nectraNFT);
@@ -63,6 +79,20 @@ abstract contract NectraBaseTest is Test {
         nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 
         deal(address(this), 1_000_000 ether);
+
+        // upgrade nUSD to the final implementation
+        UnsafeUpgrades.upgradeProxy(
+            nusdProxy,
+            address(new NUSDToken()),
+            abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+        );
+
+        // upgrade nft to the final implementation
+        UnsafeUpgrades.upgradeProxy(
+            nftProxy,
+            address(new NectraNFT()),
+            abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+        );
     }
 
     function _checkPosition(

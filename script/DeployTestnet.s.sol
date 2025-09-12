@@ -30,13 +30,13 @@ contract DeployLocalTestNode is Script {
         OracleAggregator oracleAggregator =
             new OracleAggregator(_primaryFeed, _secondaryFeed, _primaryStalenessPeriod, _secondaryStalenessPeriod);
 
-        NUSDToken nectraUSD = new NUSDToken(vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 2));
+        // NUSDToken nectraUSD = new NUSDToken(vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 2));
 
-        NectraNFT nectraNFT = new NectraNFT(vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1));
+        // NectraNFT nectraNFT = new NectraNFT(vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1));
 
         NectraBase.ConstructorArgs memory cargs = NectraBase.ConstructorArgs({
-            nectraNFTAddress: address(nectraNFT),
-            nusdTokenAddress: address(nectraUSD),
+            nectraNFTAddress: address(0), //address(nectraNFT),
+            nusdTokenAddress: address(0), //address(nectraUSD),
             oracleAddress: address(oracleAggregator),
             feeRecipientAddress: savingsAccount,
             minimumCollateral: 0, // 0 cBTC
@@ -61,11 +61,11 @@ contract DeployLocalTestNode is Script {
         });
 
         Nectra nectra = new Nectra(cargs);
-        NectraExternal nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
+        NectraExternal nectraExternal = new NectraExternal(address(nectra), address(0)); //address(nectraNFT));
 
         console.log("Nectra:           ", address(nectra));
-        console.log("NectraUSD:        ", address(nectraUSD));
-        console.log("NectraNFT:        ", address(nectraNFT));
+        // console.log("NectraUSD:        ", address(nectraUSD));
+        // console.log("NectraNFT:        ", address(nectraNFT));
         console.log("NectraExternal:   ", address(nectraExternal));
         console.log("OracleAggregator: ", address(oracleAggregator));
         vm.stopBroadcast();
