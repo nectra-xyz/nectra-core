@@ -8,14 +8,14 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
     using FixedPointMathLib for uint256;
 
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionFeeTreasuryThreshold = 1 ether; // 100% fee goes to position
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionFeeTreasuryThreshold = 1 ether; // 100% fee goes to position
         super.setUp();
     }
 
     function test_redeem_fee_fully_sent_to_position() public {
         // Initial balances
-        uint256 treasuryBalanceBefore = address(cargs.feeRecipientAddress).balance;
+        uint256 treasuryBalanceBefore = address(systemParams.feeRecipientAddress).balance;
         uint256[] memory positionCollateralBefore = new uint256[](tokens.length);
         uint256[] memory positionDebtBefore = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -34,7 +34,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
 
         // Verify treasury balance didn't change
         assertEq(
-            address(cargs.feeRecipientAddress).balance, treasuryBalanceBefore, "Treasury balance should not change"
+            address(systemParams.feeRecipientAddress).balance, treasuryBalanceBefore, "Treasury balance should not change"
         );
 
         // Verify nUSD balance decreased by redeem amount
@@ -56,7 +56,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
             // The position collateral should be reduced by the redemption amount less the fee
             // since the fee stays in the position
             uint256 expectedPositionCollateralWithRedemptionFee =
-                uint256(positionDebtBefore[i]).divWad(collateralPrice).mulWad(1 ether - cargs.redemptionBaseFee);
+                uint256(positionDebtBefore[i]).divWad(collateralPrice).mulWad(1 ether - systemParams.redemptionBaseFee);
             assertApproxEqRel(
                 positionCollateralBefore[i] - positionCollateral,
                 expectedPositionCollateralWithRedemptionFee,
@@ -70,7 +70,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
         //second last position had debt ratio of 2:3 with last position
         uint256 secondLastPositionProRataDebtDeduction = uint256(5 ether) * 2 / 3;
         uint256 expectedPositionCollateralWithRedemptionFee1 = positionCollateralBefore[5]
-            - secondLastPositionProRataDebtDeduction.divWad(collateralPrice).mulWad(1 ether - cargs.redemptionBaseFee);
+            - secondLastPositionProRataDebtDeduction.divWad(collateralPrice).mulWad(1 ether - systemParams.redemptionBaseFee);
         assertApproxEqRel(
             positionCollateral1,
             expectedPositionCollateralWithRedemptionFee1,
@@ -82,7 +82,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
         // last position had debt ratio of 1:3 with second last position
         uint256 lastPositionProRataDebtDeduction = uint256(5 ether) * 1 / 3;
         uint256 expectedPositionCollateralWithRedemptionFee2 = positionCollateralBefore[6]
-            - lastPositionProRataDebtDeduction.divWad(collateralPrice).mulWad(1 ether - cargs.redemptionBaseFee);
+            - lastPositionProRataDebtDeduction.divWad(collateralPrice).mulWad(1 ether - systemParams.redemptionBaseFee);
         assertApproxEqRel(
             positionCollateral2,
             expectedPositionCollateralWithRedemptionFee2,

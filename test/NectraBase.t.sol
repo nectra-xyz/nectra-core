@@ -26,7 +26,7 @@ abstract contract NectraBaseTest is Test {
     address whale = makeAddr("whale");
     address feeRecipient = makeAddr("feeRecipient");
 
-    NectraBase.ConstructorArgs internal cargs = NectraBase.ConstructorArgs({
+    NectraBase.SystemParams internal systemParams = NectraBase.SystemParams({
         nectraNFTAddress: address(0),
         nusdTokenAddress: address(0),
         oracleAddress: address(0),
@@ -55,44 +55,39 @@ abstract contract NectraBaseTest is Test {
     function setUp() public virtual {
         oracle = new OracleAggregatorMock(1.2 ether);
 
+        // deploy nectra with the initial implementation to get an address for core
+        address nectraProxy = UnsafeUpgrades.deployUUPSProxy(address(new InitialImplementation()), "");
+        nectra = Nectra(nectraProxy);
+
         // deploy nft with the initial implementation to get an address for core
         address nftProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new InitialImplementation()),
-            abi.encodeCall(InitialImplementation.initialize, ())
+            address(new NectraNFT()),
+            abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
         );
         nectraNFT = NectraNFT(nftProxy);
         
-        // deploy nUSD with the initial implementation to get an address for core
+        // deploy nUSD
         address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new InitialImplementation()),
-            abi.encodeCall(InitialImplementation.initialize, ())
+            address(new NUSDToken()),
+            abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
         );
         nectraUSD = NUSDToken(nusdProxy);
 
-        Nectra.ConstructorArgs memory _cargs = cargs;
-        _cargs.nectraNFTAddress = address(nectraNFT);
-        _cargs.nusdTokenAddress = address(nectraUSD);
-        _cargs.oracleAddress = address(oracle);
+        // upgrade nectra to the final implementation
+        Nectra.SystemParams memory _params = systemParams;
+        _params.nectraNFTAddress = address(nectraNFT);
+        _params.nusdTokenAddress = address(nectraUSD);
+        _params.oracleAddress = address(oracle);
 
-        nectra = new Nectra(_cargs);
+        UnsafeUpgrades.upgradeProxy(
+            nectraProxy,
+            address(new Nectra()),
+            abi.encodeCall(Nectra.initialize, (_params))
+        );
 
         nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 
         deal(address(this), 1_000_000 ether);
-
-        // upgrade nUSD to the final implementation
-        UnsafeUpgrades.upgradeProxy(
-            nusdProxy,
-            address(new NUSDToken()),
-            abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
-        );
-
-        // upgrade nft to the final implementation
-        UnsafeUpgrades.upgradeProxy(
-            nftProxy,
-            address(new NectraNFT()),
-            abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
-        );
     }
 
     function _checkPosition(

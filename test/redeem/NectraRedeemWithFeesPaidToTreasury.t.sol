@@ -8,14 +8,14 @@ contract NectraRedeemWithFeesPaidToTreasuryTest is NectraRedeemBaseTest {
     using FixedPointMathLib for uint256;
 
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionFeeTreasuryThreshold = 0 ether; // 100% fee goes to treasury
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionFeeTreasuryThreshold = 0 ether; // 100% fee goes to treasury
         super.setUp();
     }
 
     function test_redeem_fee_sent_to_treasury() public {
         // Initial balances
-        uint256 treasuryBalanceBefore = address(cargs.feeRecipientAddress).balance;
+        uint256 treasuryBalanceBefore = address(systemParams.feeRecipientAddress).balance;
 
         // Perform a redemption
         uint256 redeemAmount = 100 ether;
@@ -25,7 +25,7 @@ contract NectraRedeemWithFeesPaidToTreasuryTest is NectraRedeemBaseTest {
         _redeemAndValidate(redeemAmount, expectedOutput, expectedTreasuryFee);
 
         // Verify treasury received the correct fee portion
-        uint256 treasuryBalanceAfter = address(cargs.feeRecipientAddress).balance;
+        uint256 treasuryBalanceAfter = address(systemParams.feeRecipientAddress).balance;
 
         assertApproxEqRel(
             treasuryBalanceAfter - treasuryBalanceBefore, expectedTreasuryFee, 1e11, "Incorrect treasury fee amount"

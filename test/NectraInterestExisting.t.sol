@@ -33,9 +33,9 @@ contract NectraInterestExistingTest is NectraInterestTest {
 
     function test_update_bucket_accrues_interest() public {
         vm.warp(vm.getBlockTimestamp() + 365 days - 60 days);
-        uint256 balanceBefore = nectraUSD.balanceOf(address(cargs.feeRecipientAddress));
+        uint256 balanceBefore = nectraUSD.balanceOf(address(systemParams.feeRecipientAddress));
         nectra.updateBucket(0.2 ether);
-        uint256 balanceAfter = nectraUSD.balanceOf(address(cargs.feeRecipientAddress));
+        uint256 balanceAfter = nectraUSD.balanceOf(address(systemParams.feeRecipientAddress));
         assertApproxEqAbs(
             balanceAfter - balanceBefore,
             500 * 0.2 ether,

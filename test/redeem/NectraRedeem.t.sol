@@ -112,8 +112,8 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
     }
 
     function test_redemption_fee_is_zero_when_base_fee_and_scalar_are_zero() public {
-        assertEq(cargs.redemptionBaseFee, 0, "Redemption base fee should be 0");
-        assertEq(cargs.redemptionDynamicFeeScalar, 0, "Redemption dynamic fee scalar should be 0");
+        assertEq(systemParams.redemptionBaseFee, 0, "Redemption base fee should be 0");
+        assertEq(systemParams.redemptionDynamicFeeScalar, 0, "Redemption dynamic fee scalar should be 0");
 
         uint256 redeemAmount = 10 ether;
         uint256 redemptionFee = nectra.getRedemptionFee(redeemAmount);
@@ -143,7 +143,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
 
         uint256 initialNUSDBalance = nectraUSD.balanceOf(address(this));
         uint256 initialETHBalance = address(this).balance;
-        uint256 initialFeeRecipientBalance = address(cargs.feeRecipientAddress).balance;
+        uint256 initialFeeRecipientBalance = address(systemParams.feeRecipientAddress).balance;
 
         nectraUSD.approve(address(nectra), smallDebtAmount);
 
@@ -152,7 +152,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
 
         uint256 finalNUSDBalance = nectraUSD.balanceOf(address(this));
         uint256 finalETHBalance = address(this).balance;
-        uint256 finalFeeRecipientBalance = address(cargs.feeRecipientAddress).balance;
+        uint256 finalFeeRecipientBalance = address(systemParams.feeRecipientAddress).balance;
         uint256 finalDebt = nectraExternal.getPositionDebt(tokenId);
 
         assertEq(finalNUSDBalance, initialNUSDBalance, "NUSD balance should not change");
@@ -166,7 +166,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 startingInterestRate = 0.2 ether;
         for (uint256 i = 0; i < 100; i++) {
             nectra.modifyPosition{value: 1 ether}(0, 1 ether, 0.2 ether, startingInterestRate, "");
-            startingInterestRate += cargs.interestRateIncrement;
+            startingInterestRate += systemParams.interestRateIncrement;
         }
         vm.expectRevert();
         nectra.redeem(160 ether + 1 wei, 0);

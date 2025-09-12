@@ -70,36 +70,36 @@ contract NectraBase {
     error FlashBorrowInProgress();
     error InvalidCollateralPrice();
 
-    uint256 internal immutable LIQUIDATION_RATIO;
-    uint256 internal immutable FULL_LIQUIDATION_RATIO;
-    uint256 internal immutable ISSUANCE_RATIO;
+    uint256 internal LIQUIDATION_RATIO;
+    uint256 internal FULL_LIQUIDATION_RATIO;
+    uint256 internal ISSUANCE_RATIO;
 
-    uint256 internal immutable LIQUIDATION_PENALTY_PERCENTAGE;
-    uint256 internal immutable LIQUIDATOR_REWARD_PERCENTAGE;
-    uint256 internal immutable MAX_LIQUIDATOR_REWARD;
-    uint256 internal immutable FULL_LIQUIDATOR_FEE;
+    uint256 internal LIQUIDATION_PENALTY_PERCENTAGE;
+    uint256 internal LIQUIDATOR_REWARD_PERCENTAGE;
+    uint256 internal MAX_LIQUIDATOR_REWARD;
+    uint256 internal FULL_LIQUIDATOR_FEE;
 
-    uint256 internal immutable REDEMPTION_FEE_DECAY_PERIOD;
-    uint256 internal immutable REDEMPTION_BASE_FEE;
-    uint256 internal immutable REDEMPTION_DYNAMIC_FEE_SCALAR;
-    uint256 internal immutable REDEMPTION_FEE_TREASURY_THRESHOLD;
+    uint256 internal REDEMPTION_FEE_DECAY_PERIOD;
+    uint256 internal REDEMPTION_BASE_FEE;
+    uint256 internal REDEMPTION_DYNAMIC_FEE_SCALAR;
+    uint256 internal REDEMPTION_FEE_TREASURY_THRESHOLD;
 
-    uint256 internal immutable MAXIMUM_INTEREST_RATE;
-    uint256 internal immutable MINIMUM_INTEREST_RATE;
-    uint256 internal immutable INTEREST_RATE_INCREMENT;
+    uint256 internal MAXIMUM_INTEREST_RATE;
+    uint256 internal MINIMUM_INTEREST_RATE;
+    uint256 internal INTEREST_RATE_INCREMENT;
 
-    uint256 internal immutable OPEN_FEE_PERCENTAGE;
+    uint256 internal OPEN_FEE_PERCENTAGE;
 
-    uint256 internal immutable MINIMUM_COLLATERAL;
-    uint256 internal immutable MINIMUM_BORROW;
+    uint256 internal MINIMUM_COLLATERAL;
+    uint256 internal MINIMUM_BORROW;
 
-    uint256 internal immutable FLASH_MINT_FEE;
-    uint256 internal immutable FLASH_BORROW_FEE;
+    uint256 internal FLASH_MINT_FEE;
+    uint256 internal FLASH_BORROW_FEE;
 
-    address internal immutable NECTRA_NFT_ADDRESS;
-    address internal immutable NUSD_TOKEN_ADDRESS;
-    address internal immutable ORACLE_ADDRESS;
-    address internal immutable FEE_RECIPIENT_ADDRESS;
+    address internal NECTRA_NFT_ADDRESS;
+    address internal NUSD_TOKEN_ADDRESS;
+    address internal ORACLE_ADDRESS;
+    address internal FEE_RECIPIENT_ADDRESS;
 
     bool internal flashMintLock;
     uint256 internal flashBorrowLock;
@@ -139,7 +139,7 @@ contract NectraBase {
     /// @param feeRecipientAddress Address to receive system fees
     /// @param flashMintFee Fee for flash minting
     /// @param flashBorrowFee Fee for flash borrowing
-    struct ConstructorArgs {
+    struct SystemParams {
         address nectraNFTAddress;
         address nusdTokenAddress;
         address oracleAddress;
@@ -166,7 +166,7 @@ contract NectraBase {
     }
 
     /// @param args Constructor arguments containing all configuration parameters
-    constructor(ConstructorArgs memory args) {
+    function setSystemParams(SystemParams memory args) internal {
         NECTRA_NFT_ADDRESS = args.nectraNFTAddress;
         NUSD_TOKEN_ADDRESS = args.nusdTokenAddress;
         ORACLE_ADDRESS = args.oracleAddress;

@@ -39,20 +39,20 @@ contract NectraFlashTest is NectraBaseTest {
     uint256 internal interestRate = 0.05 ether;
 
     function setUp() public override {
-        // cargs.feeRecipientAddress = makeAddr("feeRecipient");
+        // systemParams.feeRecipientAddress = makeAddr("feeRecipient");
         super.setUp();
 
         // Get some nUSD for flash fees and give nectra some cBTC to loan out
-        int256 debtBeforeFee = int256(positionDebt * 1 ether / (1 ether + cargs.openFeePercentage)); // Debt before fee
+        int256 debtBeforeFee = int256(positionDebt * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt before fee
         (tokenId,,,,) = nectra.modifyPosition{value: positionCollateral}(
             0, int256(positionCollateral), debtBeforeFee, interestRate, ""
         );
-        uint256 expectedDebt = uint256(debtBeforeFee) + (uint256(debtBeforeFee) * cargs.openFeePercentage / 1 ether);
+        uint256 expectedDebt = uint256(debtBeforeFee) + (uint256(debtBeforeFee) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(tokenId, positionCollateral, expectedDebt, interestRate);
         // Updated positionDebt to be exact amount in the position
         positionDebt = nectraExternal.getPositionDebt(tokenId);
 
-        // Default callback params
+        // Default callback systemParams
         callbackParams = CallbackParams({
             leverageCallback: false,
             repayValueRatio: 1 ether,
@@ -82,8 +82,8 @@ contract NectraFlashTest is NectraBaseTest {
         bytes memory params = abi.encode(callbackParams);
 
         uint256 totalSupplyBefore = nectraUSD.totalSupply();
-        uint256 feeRecipientBalanceBefore = nectraUSD.balanceOf(cargs.feeRecipientAddress);
-        uint256 expectedFee = (callbackParams.borrowAmount * cargs.flashMintFee) / 1 ether;
+        uint256 feeRecipientBalanceBefore = nectraUSD.balanceOf(systemParams.feeRecipientAddress);
+        uint256 expectedFee = (callbackParams.borrowAmount * systemParams.flashMintFee) / 1 ether;
         // Flash mint is permissionless and fee is paid to fee recipient
         nectra.flashMint(address(this), callbackParams.borrowAmount, params);
 
@@ -93,7 +93,7 @@ contract NectraFlashTest is NectraBaseTest {
             "Contract balance should be balance before minus fee"
         );
         assertEq(
-            nectraUSD.balanceOf(cargs.feeRecipientAddress),
+            nectraUSD.balanceOf(systemParams.feeRecipientAddress),
             feeRecipientBalanceBefore + expectedFee,
             "Fee recipient balance should be expected fee more than before"
         );
@@ -101,29 +101,29 @@ contract NectraFlashTest is NectraBaseTest {
     }
 
     function test_flashMintUnpaidLoanAndFeeReverts() public {
-        assert(cargs.flashMintFee > 0);
+        assert(systemParams.flashMintFee > 0);
         // Callback sets allowance at 50% of the loan
         callbackParams.repayValueRatio = 0.5 ether;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
         vm.expectRevert(ERC20.InsufficientAllowance.selector);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
 
         // Callback sets allowance at 100% of the loan
         callbackParams.repayValueRatio = 1 ether;
         // Callback sets allowance at 50% of the fee
         callbackParams.repayFeeRatio = 0.5 ether;
-        params = abi.encode(callbackParams);
+        systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(ERC20.InsufficientAllowance.selector);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashMintRevertsIfCallbackReturnsFalse() public {
         callbackParams.returnValue = false;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraFlash.OperationFailed.selector);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashMintZeroAmountReverts() public {
@@ -133,18 +133,18 @@ contract NectraFlashTest is NectraBaseTest {
 
     function test_flashMintReenterReverts() public {
         callbackParams.reenter = true;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.FlashMintInProgress.selector);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashMintFlashBorrowInProgressReverts() public {
         callbackParams.enterOtherFlash = true;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.FlashBorrowInProgress.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashMintCanRepayDebt() public {
@@ -153,8 +153,8 @@ contract NectraFlashTest is NectraBaseTest {
         (, int256 expectedDebtDiff,,) = nectra.quoteModifyPosition(tokenId, 0, callbackParams.debtDelta, interestRate);
         callbackParams.borrowAmount = uint256(-expectedDebtDiff);
         callbackParams.addUSD = uint256(-expectedDebtDiff);
-        bytes memory params = abi.encode(callbackParams);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        bytes memory systemParams = abi.encode(callbackParams);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
 
         // Check that the debt has been repaid
         _checkPosition(tokenId, positionCollateral, positionDebt - debtDiff, interestRate);
@@ -167,7 +167,7 @@ contract NectraFlashTest is NectraBaseTest {
         callbackParams.borrowAmount = positionCollateral / 10;
         bytes memory params = abi.encode(callbackParams);
 
-        uint256 expectedFee = (callbackParams.borrowAmount * cargs.flashBorrowFee) / 1 ether;
+        uint256 expectedFee = (callbackParams.borrowAmount * systemParams.flashBorrowFee) / 1 ether;
         // Flash borrow is permissionless
         nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
         assertEq(
@@ -180,21 +180,21 @@ contract NectraFlashTest is NectraBaseTest {
     function test_flashBorrowCanBorrowUptoNectraBalance() public {
         // Borrow more than Nectra's cBTC balance
         callbackParams.borrowAmount = address(nectra).balance + 1;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
         vm.expectRevert(NectraBase.InvalidAmount.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
 
         // Borrow all of Nectra's cBTC balance
         callbackParams.borrowAmount = address(nectra).balance;
-        params = abi.encode(callbackParams);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        systemParams = abi.encode(callbackParams);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashBorrowRevertsIfCallbackReturnsFalse() public {
         callbackParams.returnValue = false;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
         vm.expectRevert(NectraFlash.OperationFailed.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashBorrowtZeroAmountReverts() public {
@@ -204,49 +204,49 @@ contract NectraFlashTest is NectraBaseTest {
 
     function test_flashBorrowReenterReverts() public {
         callbackParams.reenter = true;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.FlashBorrowInProgress.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashBorrowFlashMintInProgressReverts() public {
         callbackParams.enterOtherFlash = true;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.FlashMintInProgress.selector);
-        nectra.flashMint(address(this), callbackParams.borrowAmount, params);
+        nectra.flashMint(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashBorrowUnpaidLoanAndFeeReverts() public {
-        assert(cargs.flashBorrowFee > 0);
+        assert(systemParams.flashBorrowFee > 0);
         // Callback pays 50% of the loan
         callbackParams.repayValueRatio = 0.5 ether;
-        bytes memory params = abi.encode(callbackParams);
+        bytes memory systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.InvalidAmount.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
 
         // Callback pays 100% of the loan
         callbackParams.repayValueRatio = 1 ether;
         // Callback pays 50% of the fee
         callbackParams.repayFeeRatio = 0.5 ether;
-        params = abi.encode(callbackParams);
+        systemParams = abi.encode(callbackParams);
 
         vm.expectRevert(NectraBase.InvalidAmount.selector);
-        nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
+        nectra.flashBorrow(address(this), callbackParams.borrowAmount, systemParams);
     }
 
     function test_flashBorrowPaysCorrectFeeToTreasury() public {
         callbackParams.borrowAmount = positionCollateral / 10;
         bytes memory params = abi.encode(callbackParams);
-        uint256 treasuryBalanceBefore = cargs.feeRecipientAddress.balance;
-        uint256 expectedFee = (callbackParams.borrowAmount * cargs.flashBorrowFee) / 1 ether;
+        uint256 treasuryBalanceBefore = systemParams.feeRecipientAddress.balance;
+        uint256 expectedFee = (callbackParams.borrowAmount * systemParams.flashBorrowFee) / 1 ether;
 
         nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
 
         assertEq(
-            cargs.feeRecipientAddress.balance,
+            systemParams.feeRecipientAddress.balance,
             treasuryBalanceBefore + expectedFee,
             "Treasury balance should be balance before plus expected fee"
         );
@@ -265,7 +265,7 @@ contract NectraFlashTest is NectraBaseTest {
         callbackParams.addBTC = uint256(callbackParams.borrowAmount);
         bytes memory params = abi.encode(callbackParams);
 
-        uint256 expectedFee = (callbackParams.borrowAmount * cargs.flashBorrowFee) / 1 ether;
+        uint256 expectedFee = (callbackParams.borrowAmount * systemParams.flashBorrowFee) / 1 ether;
         nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
 
         assertEq(
@@ -285,23 +285,23 @@ contract NectraFlashTest is NectraBaseTest {
         // check no longer takes into account borrowed collateral, this will fail as system collateral
         // will be half what it should be since loan hasn't been repaid
         uint256 newPositionCollateral = positionCollateral + callbackParams.borrowAmount;
-        uint256 newPositionDebt = newPositionCollateral * price / cargs.issuanceRatio;
+        uint256 newPositionDebt = newPositionCollateral * price / systemParams.issuanceRatio;
         callbackParams.debtDelta =
-            int256((newPositionDebt - positionDebt) * 1 ether / (1 ether + cargs.openFeePercentage)); // Debt delta before fee
+            int256((newPositionDebt - positionDebt) * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt delta before fee
         vm.expectRevert(NectraBase.InsufficientCollateral.selector);
         nectra.quoteModifyPosition(tokenId, callbackParams.collateralDelta, callbackParams.debtDelta, interestRate);
 
         // We should be able to borrow the max amount of debt allowed by the current system collateral balance
-        newPositionDebt = callbackParams.borrowAmount * price / cargs.issuanceRatio;
+        newPositionDebt = callbackParams.borrowAmount * price / systemParams.issuanceRatio;
         callbackParams.debtDelta =
-            int256((newPositionDebt - positionDebt) * 1 ether / (1 ether + cargs.openFeePercentage)); // Debt delta before fee
+            int256((newPositionDebt - positionDebt) * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt delta before fee
         callbackParams.addBTC = uint256(callbackParams.borrowAmount);
         bytes memory params = abi.encode(callbackParams);
         nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
 
         // Expected position debt will be the delta plus the open fee
         uint256 expectedDebt =
-            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * cargs.openFeePercentage / 1 ether);
+            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(
             tokenId, positionCollateral + callbackParams.borrowAmount, positionDebt + expectedDebt, interestRate
         );
@@ -330,7 +330,7 @@ contract NectraFlashTest is NectraBaseTest {
         callbackParams.collateralDelta = int256(newPositionCollateral);
         // New debt ~$214. Calc takes into account opening fee since this is now part of the cratio i.e. what is the max debt delta we can take such that we are at issuance given the a realized opening fee
         callbackParams.debtDelta = int256(
-            (newPositionCollateral * price * 1 ether) / (cargs.issuanceRatio * (1 ether + cargs.openFeePercentage))
+            (newPositionCollateral * price * 1 ether) / (systemParams.issuanceRatio * (1 ether + systemParams.openFeePercentage))
         );
         // Use leverage callback
         callbackParams.leverageCallback = true;
@@ -356,7 +356,7 @@ contract NectraFlashTest is NectraBaseTest {
 
         // Expected position debt will be the delta plus the open fee
         uint256 expectedDebt =
-            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * cargs.openFeePercentage / 1 ether);
+            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(tokenId, newPositionCollateral, expectedDebt, interestRate);
     }
 
@@ -411,8 +411,8 @@ contract NectraFlashTest is NectraBaseTest {
         address initiator,
         bytes calldata encodedParams
     ) external payable returns (bool) {
-        CallbackParams memory params = abi.decode(encodedParams, (CallbackParams));
-        if (params.leverageCallback) {
+        CallbackParams memory systemParams = abi.decode(encodedParams, (CallbackParams));
+        if (systemParams.leverageCallback) {
             return _leverageCallback(asset, amount, premium, initiator, encodedParams);
         } else {
             return _genericCallback(asset, amount, premium, initiator, encodedParams);
@@ -428,34 +428,34 @@ contract NectraFlashTest is NectraBaseTest {
     ) internal returns (bool) {
         assertEq(initiator, address(this));
 
-        CallbackParams memory params = abi.decode(encodedParams, (CallbackParams));
-        assertEq(amount, params.borrowAmount, "Borrow amount passed should be equal to params borrow amount");
+        CallbackParams memory systemParams = abi.decode(encodedParams, (CallbackParams));
+        assertEq(amount, systemParams.borrowAmount, "Borrow amount passed should be equal to systemParams borrow amount");
 
-        uint256 repayValue = amount * params.repayValueRatio / 1 ether;
-        uint256 repayFee = premium * params.repayFeeRatio / 1 ether;
+        uint256 repayValue = amount * systemParams.repayValueRatio / 1 ether;
+        uint256 repayFee = premium * systemParams.repayFeeRatio / 1 ether;
 
         // Flash mint
         if (asset == address(nectraUSD)) {
-            if (params.reenter) {
-                nectra.flashMint(address(this), params.borrowAmount, encodedParams);
+            if (systemParams.reenter) {
+                nectra.flashMint(address(this), systemParams.borrowAmount, encodedParams);
             }
-            if (params.enterOtherFlash) {
-                nectra.flashBorrow(address(this), params.borrowAmount, encodedParams);
+            if (systemParams.enterOtherFlash) {
+                nectra.flashBorrow(address(this), systemParams.borrowAmount, encodedParams);
             }
             assertEq(msg.value, 0, "cBTC value should be 0");
-            assertEq(address(this).balance, params.btcBalanceBefore, "Contract cBTC balance should be balance before");
+            assertEq(address(this).balance, systemParams.btcBalanceBefore, "Contract cBTC balance should be balance before");
             assertEq(
                 nectraUSD.balanceOf(address(this)),
-                params.usdBalanceBefore + params.borrowAmount,
+                systemParams.usdBalanceBefore + systemParams.borrowAmount,
                 "Contract nUSD balance should be balance before plus borrow amount"
             );
 
             _checkAndModifyPositionWithBorrowedAmounts(
-                params.collateralDelta, params.debtDelta, amount, 0, params.addUSD, params.addBTC
+                systemParams.collateralDelta, systemParams.debtDelta, amount, 0, systemParams.addUSD, systemParams.addBTC
             );
 
             // Repay loan + fee
-            if (params.returnValue) {
+            if (systemParams.returnValue) {
                 nectraUSD.approve(address(nectra), repayValue + repayFee);
                 return true;
             } else {
@@ -464,31 +464,31 @@ contract NectraFlashTest is NectraBaseTest {
         }
         // Flash borrow
         else if (asset == address(0)) {
-            if (params.reenter) {
-                nectra.flashBorrow(address(this), params.borrowAmount, encodedParams);
+            if (systemParams.reenter) {
+                nectra.flashBorrow(address(this), systemParams.borrowAmount, encodedParams);
             }
-            if (params.enterOtherFlash) {
-                nectra.flashMint(address(this), params.borrowAmount, encodedParams);
+            if (systemParams.enterOtherFlash) {
+                nectra.flashMint(address(this), systemParams.borrowAmount, encodedParams);
             }
 
             assertEq(
                 nectraUSD.balanceOf(address(this)),
-                params.usdBalanceBefore,
+                systemParams.usdBalanceBefore,
                 "Contract nUSD balance should be balance before"
             );
             assertEq(msg.value, amount, "cBTC value should be equal to borrow amount");
             assertEq(
                 address(this).balance,
-                params.btcBalanceBefore + params.borrowAmount,
+                systemParams.btcBalanceBefore + systemParams.borrowAmount,
                 "Contract balance should be balance before plus borrow amount"
             );
 
             _checkAndModifyPositionWithBorrowedAmounts(
-                params.collateralDelta, params.debtDelta, 0, amount, params.addUSD, params.addBTC
+                systemParams.collateralDelta, systemParams.debtDelta, 0, amount, systemParams.addUSD, systemParams.addBTC
             );
 
             // Repay loan + fee
-            if (params.returnValue) {
+            if (systemParams.returnValue) {
                 nectra.repayFlashBorrow{value: repayValue + repayFee}();
                 return true;
             } else {
@@ -503,11 +503,11 @@ contract NectraFlashTest is NectraBaseTest {
         internal
         returns (bool)
     {
-        CallbackParams memory params = abi.decode(encodedParams, (CallbackParams));
+        CallbackParams memory systemParams = abi.decode(encodedParams, (CallbackParams));
         // Create new position with borrowed amounts and passed debt value
         int256 debtDiff;
-        (tokenId,, debtDiff,,) = nectra.modifyPosition{value: uint256(params.collateralDelta)}(
-            0, params.collateralDelta, params.debtDelta, interestRate, ""
+        (tokenId,, debtDiff,,) = nectra.modifyPosition{value: uint256(systemParams.collateralDelta)}(
+            0, systemParams.collateralDelta, systemParams.debtDelta, interestRate, ""
         );
 
         // Swap the received nUSD for cBTC

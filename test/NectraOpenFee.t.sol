@@ -5,7 +5,7 @@ import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
 
 contract NectraOpenFeeTest is NectraBaseTest {
     function setUp() public virtual override {
-        cargs.openFeePercentage = 0.005 ether; // 0.5%
+        systemParams.openFeePercentage = 0.005 ether; // 0.5%
         super.setUp();
     }
 

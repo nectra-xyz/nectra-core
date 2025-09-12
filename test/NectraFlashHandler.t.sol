@@ -32,9 +32,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         returns (uint256 tokenId, uint256 maxDebt)
     {
         uint256 flashBorrowAmountWithFees =
-            (UNIT + cargs.flashBorrowFee) * (_desiredCollateral - _initialCollateral) / UNIT;
+            (UNIT + systemParams.flashBorrowFee) * (_desiredCollateral - _initialCollateral) / UNIT;
         (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
-        maxDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
+        maxDebt = swapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT;
 
         vm.prank(_user);
         tokenId = flashHandler.increasePositionExposure{value: _initialCollateral}(
@@ -47,9 +47,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     }
 
     function setUp() public override {
-        cargs.flashBorrowFee = 0.0025 ether; // 0.25%
-        cargs.flashMintFee = 0.0025 ether; // 0.25%
-        cargs.openFeePercentage = 0.002 ether; // 0.2%
+        systemParams.flashBorrowFee = 0.0025 ether; // 0.25%
+        systemParams.flashMintFee = 0.0025 ether; // 0.25%
+        systemParams.openFeePercentage = 0.002 ether; // 0.2%
         super.setUp();
 
         // Deploy WCBTC mock
@@ -141,10 +141,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 additionalValue = 3 ether;
         uint256 newDesiredCollateral = 15 ether;
         uint256 newFlashBorrowAmountWithFees =
-            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - additionalValue) / UNIT;
+            (UNIT + systemParams.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - additionalValue) / UNIT;
         (uint256 AdditionalSwapAmountIn,) =
             satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
-        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + debtBefore;
+        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + debtBefore;
 
         // Authorize flash handler for deposit and borrow
         uint256 permissionBitmask = 1 << uint256(NectraNFT.Permission.Deposit);
@@ -176,7 +176,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 msgValue = 1 ether;
         uint256 desiredCollateral = 1 ether; // Equal to msg.value (should be greater)
         uint256 maxDebt =
-            BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+            BTC_PRICE * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.prank(user);
         vm.expectRevert(
@@ -221,7 +221,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         vm.prank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), cargs.issuanceRatio)
+            abi.encodeWithSelector(NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), systemParams.issuanceRatio)
         );
         flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
     }
@@ -230,9 +230,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 msgValue = 1 ether;
         uint256 desiredCollateral = 10 ether; // > msgValue, high leverage
 
-        uint256 flashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
+        uint256 flashBorrowAmountWithFees = (UNIT + systemParams.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
         (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
-        uint256 expectedDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
+        uint256 expectedDebt = swapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT;
 
         uint256 maxDebt = 1000 * UNIT; // Very low max debt
 
@@ -261,7 +261,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         // Close the position
         (, uint256 debt,) = nectraExternal.getPosition(tokenId);
-        uint256 totalDebtCost = debt * (UNIT + cargs.flashMintFee) / UNIT;
+        uint256 totalDebtCost = debt * (UNIT + systemParams.flashMintFee) / UNIT;
         (uint256 swapAmountIn,) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
         uint256 minCollateralOut = desiredCollateral - swapAmountIn;
 
@@ -313,10 +313,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 extraCollateral = 2 ether;
         uint256 newDesiredCollateral = 15 ether;
         uint256 newFlashBorrowAmountWithFees =
-            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - 10 ether - extraCollateral) / UNIT;
+            (UNIT + systemParams.flashBorrowFee) * (newDesiredCollateral - 10 ether - extraCollateral) / UNIT;
         (uint256 AdditionalSwapAmountIn,) =
             satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
-        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + maxDebt;
+        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + maxDebt;
 
         // Try to modify as different user without authorization
         vm.startPrank(user2);
@@ -359,10 +359,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 newDesiredCollateral = 15 ether;
         uint256 extraCollateral = 2 ether;
         uint256 newFlashBorrowAmountWithFees =
-            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
+            (UNIT + systemParams.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
         (uint256 AdditionalSwapAmountIn,) =
             satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
-        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + maxDebt;
+        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + maxDebt;
 
         vm.prank(user2);
         flashHandler.increasePositionExposure{value: extraCollateral}(
@@ -471,9 +471,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 desiredCollateral = 10 ether; // > msgValue
         uint256 maxDebt = 330000 * UNIT; // Tight debt limit
 
-        uint256 flashBorrowAmountWithFees = (UNIT + cargs.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
+        uint256 flashBorrowAmountWithFees = (UNIT + systemParams.flashBorrowFee) * (desiredCollateral - msgValue) / UNIT;
         (uint256 swapAmountIn,) = satsumaHandler.getNUSDToWCBTCExactOutputQuote(flashBorrowAmountWithFees, 0);
-        uint256 expectedDebt = swapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT;
+        uint256 expectedDebt = swapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT;
 
         // This should fail due to high slippage making the swap cost too much
         vm.prank(user);
@@ -527,7 +527,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     function test_increasePositionExposure_revertIfInvalidPositionId() public {
         uint256 invalidTokenId = 999;
         uint256 maxDebt =
-            BTC_PRICE * (UNIT + cargs.openFeePercentage + cargs.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+            BTC_PRICE * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));
@@ -578,10 +578,10 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 extraCollateral = 2 ether;
         uint256 newDesiredCollateral = 15 ether;
         uint256 newFlashBorrowAmountWithFees =
-            (UNIT + cargs.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
+            (UNIT + systemParams.flashBorrowFee) * (newDesiredCollateral - desiredCollateral - extraCollateral) / UNIT;
         (uint256 AdditionalSwapAmountIn,) =
             satsumaHandler.getNUSDToWCBTCExactOutputQuote(newFlashBorrowAmountWithFees, 0);
-        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + cargs.openFeePercentage) / UNIT + debt1;
+        uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + debt1;
 
         vm.prank(user);
         flashHandler.increasePositionExposure{value: extraCollateral}(
@@ -599,7 +599,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         vm.prank(user);
         nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
-        uint256 totalDebtCost = debt2 * (UNIT + cargs.flashMintFee) / UNIT;
+        uint256 totalDebtCost = debt2 * (UNIT + systemParams.flashMintFee) / UNIT;
         (uint256 swapAmountIn,) = satsumaHandler.getWCBTCToNUSDExactOutputQuote(totalDebtCost, 0);
         uint256 minCollateralOut = desiredCollateral - swapAmountIn;
 

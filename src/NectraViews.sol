@@ -51,8 +51,8 @@ abstract contract NectraViews is NectraBase {
 
     /// @notice Gets the system configuration values
     /// @return Complete set of system configuration values
-    function getConfig() external view returns (NectraBase.ConstructorArgs memory) {
-        NectraBase.ConstructorArgs memory cargs = NectraBase.ConstructorArgs({
+    function getConfig() external view returns (NectraBase.SystemParams memory) {
+        NectraBase.SystemParams memory params = NectraBase.SystemParams({
             nectraNFTAddress: NECTRA_NFT_ADDRESS,
             nusdTokenAddress: NUSD_TOKEN_ADDRESS,
             oracleAddress: ORACLE_ADDRESS,
@@ -78,6 +78,6 @@ abstract contract NectraViews is NectraBase {
             flashBorrowFee: FLASH_BORROW_FEE
         });
 
-        return cargs;
+        return params;
     }
 }

@@ -13,7 +13,7 @@ contract NectraLiquidationsTest is NectraBaseTest {
     uint256[] internal tokens;
 
     function setUp() public virtual override {
-        cargs.openFeePercentage = 0; // Disable open fee for testing
+        systemParams.openFeePercentage = 0; // Disable open fee for testing
         super.setUp();
 
         uint256 tokenId;

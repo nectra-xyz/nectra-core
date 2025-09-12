@@ -11,7 +11,7 @@ import {OracleAggregator} from "src/OracleAggregator.sol";
 
 contract NectraInterestTest is NectraBaseTest {
     function setUp() public virtual override {
-        cargs.openFeePercentage = 0;
+        systemParams.openFeePercentage = 0;
         super.setUp();
 
         nectraUSD.approve(address(nectra), type(uint256).max);

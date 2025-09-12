@@ -16,7 +16,7 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         super.setUp();
 
         // fill lowest bucket with position that will remain solvent
-        nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(25 ether), cargs.minimumInterestRate, "");
+        nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(25 ether), systemParams.minimumInterestRate, "");
         // fill upper bucket with position that will remain solvent
         nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(30 ether), 0.05 ether, "");
 
@@ -27,8 +27,8 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         (uint256 currentPrice,) = oracle.getLatestPrice();
         uint256 collateralAmount = 10 ether;
         uint256 collateralValue = collateralAmount.mulWad(currentPrice);
-        uint256 maxDebt = collateralValue.divWad(cargs.issuanceRatio);
-        uint256 targetPrice = cargs.fullLiquidationRatio.mulWad(1 ether + cargs.openFeePercentage).mulWad(maxDebt).divWad(collateralAmount);
+        uint256 maxDebt = collateralValue.divWad(systemParams.issuanceRatio);
+        uint256 targetPrice = systemParams.fullLiquidationRatio.mulWad(1 ether + systemParams.openFeePercentage).mulWad(maxDebt).divWad(collateralAmount);
 
         // fill insolvent bucket with position that will be insolvent
         nectra.modifyPosition{ value: collateralAmount }(0, int256(collateralAmount), int256(maxDebt), INSOLVENT_BUCKET, "");
@@ -39,13 +39,13 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         uint256 redeemAmount = 50 ether;
 
         // perform redemption, it should skip the insolvent bucket
-        uint256 lowestBucketDebtBefore = nectraExternal.getBucketDebt(cargs.minimumInterestRate);
+        uint256 lowestBucketDebtBefore = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
         uint256 insolventBucketDebtBefore = nectraExternal.getBucketDebt(INSOLVENT_BUCKET);
         uint256 nextBucketDebtBefore = nectraExternal.getBucketDebt(0.05 ether);
 
         nectra.redeem(redeemAmount, 0);
 
-        uint256 lowestBucketDebtAfter = nectraExternal.getBucketDebt(cargs.minimumInterestRate);
+        uint256 lowestBucketDebtAfter = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
         uint256 insolventBucketDebtAfter = nectraExternal.getBucketDebt(INSOLVENT_BUCKET);
         uint256 nextBucketDebtAfter = nectraExternal.getBucketDebt(0.05 ether);
 

@@ -79,5 +79,5 @@ interface INectra {
         view
         returns (NectraLib.BucketState memory, NectraLib.GlobalState memory);
     function getGlobalState() external view returns (NectraLib.GlobalState memory);
-    function getConfig() external view returns (NectraBase.ConstructorArgs memory);
+    function getConfig() external view returns (NectraBase.SystemParams memory);
 }

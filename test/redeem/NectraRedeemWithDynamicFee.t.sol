@@ -11,7 +11,7 @@ import {OracleAggregator} from "src/OracleAggregator.sol";
 
 contract NectraRedeemWithDynamicFeeTest is NectraRedeemBaseTest {
     function setUp() public virtual override {
-        cargs.redemptionDynamicFeeScalar = 1 ether;
+        systemParams.redemptionDynamicFeeScalar = 1 ether;
         super.setUp();
     }
 

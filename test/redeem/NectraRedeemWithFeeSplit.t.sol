@@ -11,8 +11,8 @@ import {OracleAggregator} from "src/OracleAggregator.sol";
 
 contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionFeeTreasuryThreshold = 0.002 ether; // 0.2% threshold - so 0.3% fee will be sent to treasury
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionFeeTreasuryThreshold = 0.002 ether; // 0.2% threshold - so 0.3% fee will be sent to treasury
         super.setUp();
     }
 
@@ -73,7 +73,7 @@ contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
 
     function test_redeem_fee_split_between_treasury_and_positions() public {
         // Initial balances
-        uint256 treasuryBalanceBefore = address(cargs.feeRecipientAddress).balance;
+        uint256 treasuryBalanceBefore = address(systemParams.feeRecipientAddress).balance;
         uint256[] memory positionBalancesBefore = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             positionBalancesBefore[i] = address(this).balance;
@@ -87,7 +87,7 @@ contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
         _redeemAndValidate(redeemAmount, expectedOutput, expectedTreasuryFee);
 
         // Verify treasury received the correct fee portion
-        uint256 treasuryBalanceAfter = address(cargs.feeRecipientAddress).balance;
+        uint256 treasuryBalanceAfter = address(systemParams.feeRecipientAddress).balance;
 
         assertApproxEqRel(
             treasuryBalanceAfter - treasuryBalanceBefore, expectedTreasuryFee, 1e11, "Incorrect treasury fee amount"

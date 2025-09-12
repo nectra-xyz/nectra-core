@@ -101,7 +101,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     function test_should_revert_for_invalid_position_id() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForLiquidation.selector, type(uint256).max, cargs.liquidationRatio
+                NectraLiquidate.NotEligibleForLiquidation.selector, type(uint256).max, systemParams.liquidationRatio
             )
         );
         nectra.liquidate(31337);
@@ -119,7 +119,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForLiquidation.selector, 1411764705882352941, cargs.liquidationRatio
+                NectraLiquidate.NotEligibleForLiquidation.selector, 1411764705882352941, systemParams.liquidationRatio
             )
         );
         nectra.liquidate(tokenId);
@@ -222,7 +222,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         //uint256 closingFee = nectra.getClosingFee(tokenId, debt);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         // calculate the time shift required to make the position eligible for full liquidation due to interest
-        uint256 targetInterest = collateral.mulWad(collateralPrice).divWad(cargs.liquidationRatio) - debt;
+        uint256 targetInterest = collateral.mulWad(collateralPrice).divWad(systemParams.liquidationRatio) - debt;
         uint256 timeShift = targetInterest.divWad(defaultInterestRate.mulWad(debt));
         uint256 targetTime = vm.getBlockTimestamp() + (timeShift * 365 days / UNIT);
 
@@ -248,7 +248,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         // with the closing fee realized. If the closing fee is > 0 and
         // is not considered, the position will not be eligible for partial liquidation
         // when liquidate is called.
-        uint256 priceBeforePartialLiquidaition = cargs.liquidationRatio * debt / collateral;
+        uint256 priceBeforePartialLiquidaition = systemParams.liquidationRatio * debt / collateral;
 
         // confirm position is not liquidatable because fees are not enough
         assertEq(nectraExternal.canLiquidate(tokenId), false, "Position should not be eligible for partial liquidation");
@@ -291,7 +291,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 cratio = collateral.mulWad(liquidationAmounts.liquidationPrice).divWad(debt);
         // Within 1 wei of eachother because of 1 wei rounding
-        assertApproxEqRel(cratio, cargs.issuanceRatio, 1, "Position is not at issuance ratio");
+        assertApproxEqRel(cratio, systemParams.issuanceRatio, 1, "Position is not at issuance ratio");
     }
 
     function test_should_pay_liquidator_reward() public {
@@ -481,7 +481,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
             cBTCReceived.mulWad(liquidationAmounts.liquidationPrice) - liquidationAmounts.debtToLiquidate;
         console2.log("reward amount ", rewardAmount);
         assertLt(
-            rewardAmount, cargs.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
+            rewardAmount, systemParams.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
         );
     }
 
@@ -517,7 +517,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 rewardAmount =
             cBTCReceived.mulWad(liquidationAmounts.liquidationPrice) - liquidationAmounts.debtToLiquidate;
         assertLt(
-            rewardAmount, cargs.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
+            rewardAmount, systemParams.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
         );
     }
 
@@ -580,7 +580,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         assertGt(
             collateral.mulWad(liquidationAmounts.liquidationPrice).divWad(debt),
-            cargs.issuanceRatio,
+            systemParams.issuanceRatio,
             "Position is not in healthy state"
         );
         assertEq(nectraUSD.balanceOf(address(this)), nUSDBefore - 15 ether - closingFee, "nUSD not burned correctly");
@@ -588,7 +588,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     }
 
     // Flash loan receiver
-    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata systemParams)
         external
         payable
         returns (bool)
@@ -648,19 +648,19 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         // uint256 amountToFix = (
         //     liquidationAmounts.initialDebt.mulWadUp(ISSUANCE_RATIO) - liquidationAmounts.initialCollateral.mulWad(globalState.collateralPrice)
         // ).divWadUp(ISSUANCE_RATIO - 1 ether);
-        uint256 numerator = liquidationAmounts.initialDebt.mulWadUp(cargs.issuanceRatio)
+        uint256 numerator = liquidationAmounts.initialDebt.mulWadUp(systemParams.issuanceRatio)
             - liquidationAmounts.initialCollateral.mulWadUp(liquidationAmounts.liquidationPrice);
-        liquidationAmounts.amountToFix = numerator.divWadUp(cargs.issuanceRatio - UNIT);
+        liquidationAmounts.amountToFix = numerator.divWadUp(systemParams.issuanceRatio - UNIT);
 
         // calculate the amount of collateral to redeem
         // uint256 collateralToRedeem = amountToFix.divWadUp(globalState.collateralPrice);
         liquidationAmounts.collateralToLiquidate =
             liquidationAmounts.amountToFix.divWadUp(liquidationAmounts.liquidationPrice);
         // uint256 penalty = amountToFix.mulWadUp(LIQUIDATION_PENALTY_PERCENTAGE);
-        liquidationAmounts.penalty = liquidationAmounts.amountToFix.mulWadUp(cargs.liquidationPenaltyPercentage);
+        liquidationAmounts.penalty = liquidationAmounts.amountToFix.mulWadUp(systemParams.liquidationPenaltyPercentage);
         // uint256 penaltyCollateral = penalty.divWadUp(globalState.collateralPrice).mulWadUp(ISSUANCE_RATIO);
         liquidationAmounts.penaltyCollateral =
-            liquidationAmounts.penalty.divWadUp(liquidationAmounts.liquidationPrice).mulWadUp(cargs.issuanceRatio);
+            liquidationAmounts.penalty.divWadUp(liquidationAmounts.liquidationPrice).mulWadUp(systemParams.issuanceRatio);
 
         // calculate the amount of collateral to redeem
         // uint256 collateralToRedeem = amountToFix.divWadUp(globalState.collateralPrice);
@@ -670,8 +670,8 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
         // calculate liquidator reward, capped to max liquidator reward
         liquidationAmounts.amountToLiquidator =
-            liquidationAmounts.penaltyCollateral.mulWad(cargs.liquidatorRewardPercentage);
-        uint256 maxLiquidatorReward = cargs.maximumLiquidatorReward.divWad(liquidationAmounts.liquidationPrice);
+            liquidationAmounts.penaltyCollateral.mulWad(systemParams.liquidatorRewardPercentage);
+        uint256 maxLiquidatorReward = systemParams.maximumLiquidatorReward.divWad(liquidationAmounts.liquidationPrice);
         if (liquidationAmounts.amountToLiquidator > maxLiquidatorReward) {
             liquidationAmounts.amountToLiquidator = maxLiquidatorReward;
         }

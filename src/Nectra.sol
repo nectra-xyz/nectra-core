@@ -14,11 +14,24 @@ import {NectraLiquidate} from "src/NectraLiquidate.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NectraFlash} from "src/NectraFlash.sol";
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 /// @title Nectra
 /// @notice Core contract for managing collateralized debt positions
 /// @dev Handles position creation, modification, and management with interest rate buckets
 /// @dev Holds the deposited cBTC balance for the system
-contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, NectraViews {
+contract Nectra is 
+    NectraBase, 
+    NectraRedeem, 
+    NectraLiquidate, 
+    NectraFlash,
+    NectraViews, 
+    Initializable, 
+    OwnableUpgradeable, 
+    UUPSUpgradeable 
+{
     using NectraMathLib for uint256;
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
@@ -49,8 +62,13 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
         address indexed operator
     );
 
-    /// @param args Constructor parameters defined in NectraBase
-    constructor(ConstructorArgs memory args) NectraBase(args) {}
+    /// @param params System parameters defined in NectraBase
+    function initialize(SystemParams memory params) public initializer {
+        setSystemParams(params);
+
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+    }
 
     /// @notice Creates, modifies or closes a collateralized debt position
     /// @dev Handles interest rate change, debt issuance/repayment, and collateral deposit/withdraw
@@ -351,4 +369,9 @@ contract Nectra is NectraBase, NectraRedeem, NectraLiquidate, NectraFlash, Nectr
         _finalizeBucket(bucket);
         _finalizeGlobal(global);
     }
+
+    /// @notice Authorizes the upgrade of the implementation contract
+    /// @dev Required by UUPSUpgradeable to authorize upgrades
+    /// @param newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

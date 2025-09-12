@@ -10,7 +10,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
     using FixedPointMathLib for uint256;
 
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
         super.setUp();
     }
 
@@ -123,7 +123,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         uint256 initialNUSDSupply = nectraUSD.totalSupply();
         uint256 initialUserNUSDBalance = nectraUSD.balanceOf(address(this));
         uint256 initialUserETHBalance = address(this).balance;
-        uint256 initialFeeRecipientBalance = address(cargs.feeRecipientAddress).balance;
+        uint256 initialFeeRecipientBalance = address(systemParams.feeRecipientAddress).balance;
         uint256 initialBucketDebt = nectraExternal.getBucketDebt(0.05 ether);
 
         (uint256 collateralPrice,) = oracle.getLatestPrice();
@@ -134,7 +134,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         uint256 finalNUSDSupply = nectraUSD.totalSupply();
         uint256 finalUserNUSDBalance = nectraUSD.balanceOf(address(this));
         uint256 finalUserETHBalance = address(this).balance;
-        uint256 finalFeeRecipientBalance = address(cargs.feeRecipientAddress).balance;
+        uint256 finalFeeRecipientBalance = address(systemParams.feeRecipientAddress).balance;
         uint256 finalBucketDebt = nectraExternal.getBucketDebt(0.05 ether);
 
         uint256 nUSDBurned = initialNUSDSupply - finalNUSDSupply;

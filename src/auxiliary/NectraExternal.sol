@@ -59,31 +59,31 @@ contract NectraExternal {
         nectra = INectra(_nectra);
         nectraNFT = INectraNFT(_nectraNFT);
 
-        NectraBase.ConstructorArgs memory cargs = nectra.getConfig();
+        NectraBase.SystemParams memory params = nectra.getConfig();
 
-        NECTRA_NFT_ADDRESS = cargs.nectraNFTAddress;
-        NUSD_TOKEN_ADDRESS = cargs.nusdTokenAddress;
-        ORACLE_ADDRESS = cargs.oracleAddress;
-        FEE_RECIPIENT_ADDRESS = cargs.feeRecipientAddress;
-        MINIMUM_COLLATERAL = cargs.minimumCollateral;
-        MINIMUM_BORROW = cargs.minimumDebt;
-        MAXIMUM_INTEREST_RATE = cargs.maximumInterestRate;
-        MINIMUM_INTEREST_RATE = cargs.minimumInterestRate;
-        INTEREST_RATE_INCREMENT = cargs.interestRateIncrement;
-        LIQUIDATION_RATIO = cargs.liquidationRatio;
-        FULL_LIQUIDATION_RATIO = cargs.fullLiquidationRatio;
-        ISSUANCE_RATIO = cargs.issuanceRatio;
-        OPEN_FEE_PERCENTAGE = cargs.openFeePercentage;
-        LIQUIDATION_PENALTY_PERCENTAGE = cargs.liquidationPenaltyPercentage;
-        LIQUIDATOR_REWARD_PERCENTAGE = cargs.liquidatorRewardPercentage;
-        MAX_LIQUIDATOR_REWARD = cargs.maximumLiquidatorReward;
-        FULL_LIQUIDATOR_FEE = cargs.fullLiquidationFee;
-        REDEMPTION_FEE_DECAY_PERIOD = cargs.redemptionFeeDecayPeriod;
-        REDEMPTION_BASE_FEE = cargs.redemptionBaseFee;
-        REDEMPTION_DYNAMIC_FEE_SCALAR = cargs.redemptionDynamicFeeScalar;
-        REDEMPTION_FEE_TREASURY_THRESHOLD = cargs.redemptionFeeTreasuryThreshold;
-        FLASH_MINT_FEE = cargs.flashMintFee;
-        FLASH_BORROW_FEE = cargs.flashBorrowFee;
+        NECTRA_NFT_ADDRESS = params.nectraNFTAddress;
+        NUSD_TOKEN_ADDRESS = params.nusdTokenAddress;
+        ORACLE_ADDRESS = params.oracleAddress;
+        FEE_RECIPIENT_ADDRESS = params.feeRecipientAddress;
+        MINIMUM_COLLATERAL = params.minimumCollateral;
+        MINIMUM_BORROW = params.minimumDebt;
+        MAXIMUM_INTEREST_RATE = params.maximumInterestRate;
+        MINIMUM_INTEREST_RATE = params.minimumInterestRate;
+        INTEREST_RATE_INCREMENT = params.interestRateIncrement;
+        LIQUIDATION_RATIO = params.liquidationRatio;
+        FULL_LIQUIDATION_RATIO = params.fullLiquidationRatio;
+        ISSUANCE_RATIO = params.issuanceRatio;
+        OPEN_FEE_PERCENTAGE = params.openFeePercentage;
+        LIQUIDATION_PENALTY_PERCENTAGE = params.liquidationPenaltyPercentage;
+        LIQUIDATOR_REWARD_PERCENTAGE = params.liquidatorRewardPercentage;
+        MAX_LIQUIDATOR_REWARD = params.maximumLiquidatorReward;
+        FULL_LIQUIDATOR_FEE = params.fullLiquidationFee;
+        REDEMPTION_FEE_DECAY_PERIOD = params.redemptionFeeDecayPeriod;
+        REDEMPTION_BASE_FEE = params.redemptionBaseFee;
+        REDEMPTION_DYNAMIC_FEE_SCALAR = params.redemptionDynamicFeeScalar;
+        REDEMPTION_FEE_TREASURY_THRESHOLD = params.redemptionFeeTreasuryThreshold;
+        FLASH_MINT_FEE = params.flashMintFee;
+        FLASH_BORROW_FEE = params.flashBorrowFee;
     }
 
     /// @notice Gets the total debt of a position including outstanding fees

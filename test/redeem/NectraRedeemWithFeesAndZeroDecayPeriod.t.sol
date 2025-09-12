@@ -5,10 +5,10 @@ import {NectraRedeemBaseTest} from "test/redeem/NectraRedeemBase.t.sol";
 
 contract NectraRedeemWithFeesAndZeroDecayPeriodTest is NectraRedeemBaseTest {
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionDynamicFeeScalar = 1 ether;
-        cargs.redemptionFeeDecayPeriod = 0 hours; // Fee decays to base fee instantly
-        cargs.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionDynamicFeeScalar = 1 ether;
+        systemParams.redemptionFeeDecayPeriod = 0 hours; // Fee decays to base fee instantly
+        systemParams.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
         super.setUp();
     }
 

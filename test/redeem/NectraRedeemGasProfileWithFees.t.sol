@@ -9,25 +9,25 @@ contract NectraRedeemGasProfileWithFeesTest is NectraBaseTest {
     using FixedPointMathLib for uint256;
 
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionDynamicFeeScalar = 1 ether;
-        cargs.redemptionFeeDecayPeriod = 6 hours;
-        cargs.redemptionFeeTreasuryThreshold = 0 ether;
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionDynamicFeeScalar = 1 ether;
+        systemParams.redemptionFeeDecayPeriod = 6 hours;
+        systemParams.redemptionFeeTreasuryThreshold = 0 ether;
         super.setUp();
 
         for (uint256 i = 0; i < 100; i++) {
             nectra.modifyPosition{value: 10 ether}(
-                0, 10 ether, 1 ether, cargs.minimumInterestRate + i * cargs.interestRateIncrement, ""
+                0, 10 ether, 1 ether, systemParams.minimumInterestRate + i * systemParams.interestRateIncrement, ""
             );
         }
 
         for (uint256 i = 0; i < 100; i++) {
             nectra.modifyPosition{value: 10 ether}(
-                0, 10 ether, 1 ether, cargs.minimumInterestRate + (i + 256) * cargs.interestRateIncrement, ""
+                0, 10 ether, 1 ether, systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement, ""
             );
         }
 
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, cargs.maximumInterestRate, "");
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, systemParams.maximumInterestRate, "");
     }
 
     function test_gas_profile_redeem() public {

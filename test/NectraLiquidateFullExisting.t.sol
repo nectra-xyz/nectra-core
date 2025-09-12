@@ -41,7 +41,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         tokens.push(tokenId);
 
         (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(20 ether), defaultInterestRate + cargs.interestRateIncrement, ""
+            0, int256(defaultCollateral), int256(20 ether), defaultInterestRate + systemParams.interestRateIncrement, ""
         );
         tokens.push(tokenId);
     }
@@ -59,7 +59,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     function test_should_revert_for_invalid_position_id() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForFullLiquidation.selector, type(uint256).max, cargs.fullLiquidationRatio
+                NectraLiquidate.NotEligibleForFullLiquidation.selector, type(uint256).max, systemParams.fullLiquidationRatio
             )
         );
         nectra.fullLiquidate(31337);
@@ -72,7 +72,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForFullLiquidation.selector, cratio, cargs.fullLiquidationRatio
+                NectraLiquidate.NotEligibleForFullLiquidation.selector, cratio, systemParams.fullLiquidationRatio
             )
         );
         nectra.fullLiquidate(tokens[1]);
@@ -100,7 +100,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // uint256 tokenId = tokens[1];
         // (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         // uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        // uint256 fullLiquidationPrice = cargs.fullLiquidationRatio * (debt + closingFee) / collateral;
+        // uint256 fullLiquidationPrice = systemParams.fullLiquidationRatio * (debt + closingFee) / collateral;
 
         // uint256 globalDebtBefore = nectraExternal.getGlobalDebt();
         // uint256 bucketDebtBefore = nectraExternal.getBucketDebt(defaultInterestRate);
@@ -118,10 +118,10 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
         // console2.log("closing Fee", closingFee);
         // console2.log("global debt before", globalDebtBefore);
-        // uint256 expectedGlobalDebt = globalDebtBefore + closingFee + cargs.fullLiquidationFee;
-        // uint256 expectedBucketDebt = bucketDebtBefore - debt + closingFee + cargs.fullLiquidationFee;
+        // uint256 expectedGlobalDebt = globalDebtBefore + closingFee + systemParams.fullLiquidationFee;
+        // uint256 expectedBucketDebt = bucketDebtBefore - debt + closingFee + systemParams.fullLiquidationFee;
         // uint256 expectedCollateralPerShare = globalStateBefore.accumulatedLiquidatedCollateralPerShare + collateral.divWad(globalStateBefore.totalDebtShares);
-        // uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare + (debt + cargs.fullLiquidationFee).divWad(globalStateBefore.totalDebtShares);
+        // uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare + (debt + systemParams.fullLiquidationFee).divWad(globalStateBefore.totalDebtShares);
 
         // assertEq(globalStateAfter.debt, expectedGlobalDebt, "global debt not deducted correctly");
         // assertEq(bucketDebtAfter, expectedBucketDebt, "bucket debt not deducted correctly");
@@ -156,7 +156,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         _checkPosition(tokenId, 0, 0, defaultInterestRate);
 
         // check that the liquidator received the reward
-        assertEq(nectraUSD.balanceOf(liquidator), cargs.fullLiquidationFee);
+        assertEq(nectraUSD.balanceOf(liquidator), systemParams.fullLiquidationFee);
     }
 
     function test_should_socialize_liquidator_reward_as_debt() public {
@@ -171,7 +171,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // check that the liquidator received the reward
         assertEq(
             nectraExternal.getGlobalDebt(),
-            globalDebtBefore + cargs.fullLiquidationFee,
+            globalDebtBefore + systemParams.fullLiquidationFee,
             "debt should increase by the liquidator reward"
         );
 
@@ -182,7 +182,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         nectra.updatePosition(tokens[0]);
 
         // check that the liquidator received the reward
-        // assertEq(nectra.getGlobalState().debt, globalStateBefore.debt + closingFee + cargs.fullLiquidationFee, "debt should increase by the liquidator reward");
+        // assertEq(nectra.getGlobalState().debt, globalStateBefore.debt + closingFee + systemParams.fullLiquidationFee, "debt should increase by the liquidator reward");
     }
 
     function test_should_realize_outstanding_fees_when_checking_cratio() public {
@@ -194,7 +194,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // with the closing fee realized. If the closing fee is > 0 and
         // is not considered, the position will not be eligible for full liquidation
         // when fullLiquidate is called.
-        uint256 priceBeforeFullLiquidaition = cargs.fullLiquidationRatio * (debt + closingFee) / collateral;
+        uint256 priceBeforeFullLiquidaition = systemParams.fullLiquidationRatio * (debt + closingFee) / collateral;
 
         // change the price to force liquidation
         oracle.setCurrentPrice(priceBeforeFullLiquidaition);
@@ -221,7 +221,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         // calculate the time shift required to make the position eligible for full liquidation due to interest
         uint256 targetInterest =
-            collateral.mulWad(collateralPrice).divWad(cargs.fullLiquidationRatio) - (debt + closingFee);
+            collateral.mulWad(collateralPrice).divWad(systemParams.fullLiquidationRatio) - (debt + closingFee);
         uint256 timeShift = targetInterest.divWad(defaultInterestRate.mulWad(debt + closingFee));
         uint256 targetTime = block.timestamp + (timeShift * 365 days / UNIT);
         // calculate the expected interest to be paid to the fee recipient
@@ -237,7 +237,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // should revert because the interest is not accrued yet
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForFullLiquidation.selector, 1411764705882352941, cargs.fullLiquidationRatio
+                NectraLiquidate.NotEligibleForFullLiquidation.selector, 1411764705882352941, systemParams.fullLiquidationRatio
             )
         );
         nectra.fullLiquidate(tokenId);
@@ -262,7 +262,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
-        uint256 fullLiquidationPrice = cargs.fullLiquidationRatio * (debt + closingFee) / collateral;
+        uint256 fullLiquidationPrice = systemParams.fullLiquidationRatio * (debt + closingFee) / collateral;
 
         oracle.setCurrentPrice(fullLiquidationPrice);
         nectra.fullLiquidate(tokenId);
@@ -320,11 +320,11 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
         // open new position in different bucket
         (uint256 tokenId2,,,,) = nectra.modifyPosition{value: collateral}(
-            0, int256(collateral), int256(debt), defaultInterestRate + cargs.interestRateIncrement, ""
+            0, int256(collateral), int256(debt), defaultInterestRate + systemParams.interestRateIncrement, ""
         );
 
         // check that the position is reopened without redistribution of liquidated collateral or debt
-        _checkPosition(tokenId2, collateral, debt, defaultInterestRate + cargs.interestRateIncrement);
+        _checkPosition(tokenId2, collateral, debt, defaultInterestRate + systemParams.interestRateIncrement);
     }
 
     function test_should_socialise_into_existing_position_in_same_bucket_when_updated() public {
@@ -374,18 +374,18 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // update position in different bucket
         (NectraLib.PositionState memory positionBefore, NectraLib.BucketState memory bucketBefore,) =
             nectra.getPositionState(tokenId2);
-        uint256 bucketDebtBefore = nectraExternal.getBucketDebt(defaultInterestRate + cargs.interestRateIncrement);
+        uint256 bucketDebtBefore = nectraExternal.getBucketDebt(defaultInterestRate + systemParams.interestRateIncrement);
         uint256 expectedDebt = bucketDebtBefore.mulWad(positionBefore.debtShares).divWad(bucketBefore.totalDebtShares);
         uint256 expectedCollateral =
             collateral2 + bucketBefore.accumulatedLiquidatedCollateralPerShare.mulWad(positionBefore.debtShares);
 
         // check that the position is reopened without redistribution of liquidated collateral or debt
-        _checkPosition(tokenId2, expectedCollateral, expectedDebt, defaultInterestRate + cargs.interestRateIncrement);
+        _checkPosition(tokenId2, expectedCollateral, expectedDebt, defaultInterestRate + systemParams.interestRateIncrement);
     }
 
     function test_should_update_bucket_collateral_when_liquidating_full() public {
         uint256 tokenId = tokens[3];
-        uint256 bucket = defaultInterestRate + cargs.interestRateIncrement;
+        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement;
         (uint256 collateral,,) = nectraExternal.getPosition(tokenId);
         
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
@@ -404,7 +404,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     }
 
     // Flash loan receiver
-    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata systemParams)
         external
         payable
         returns (bool)
