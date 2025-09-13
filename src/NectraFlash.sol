@@ -42,27 +42,27 @@ abstract contract NectraFlash is NectraBase {
         _requireFlashMintUnlocked();
         _requireFlashBorrowUnlocked();
 
-        flashMintLock = true;
+        _core().flashMintLock = true;
 
-        uint256 fee = amount.mulWadUp(FLASH_MINT_FEE);
+        uint256 fee = amount.mulWadUp(_systemConfig().FLASH_MINT_FEE);
 
         // mint
-        NUSDToken(NUSD_TOKEN_ADDRESS).mint(to, amount);
+        NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(to, amount);
 
         // call the callback
         require(
-            IFlashLoanSimpleReceiver(to).executeOperation(NUSD_TOKEN_ADDRESS, amount, fee, msg.sender, data),
+            IFlashLoanSimpleReceiver(to).executeOperation(_systemConfig().NUSD_TOKEN_ADDRESS, amount, fee, msg.sender, data),
             OperationFailed()
         );
 
         // burn
-        NUSDToken(NUSD_TOKEN_ADDRESS).burn(to, amount + fee);
+        NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).burn(to, amount + fee);
 
         if (fee > 0) {
-            NUSDToken(NUSD_TOKEN_ADDRESS).mint(FEE_RECIPIENT_ADDRESS, fee);
+            NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(_systemConfig().FEE_RECIPIENT_ADDRESS, fee);
         }
 
-        flashMintLock = false;
+        _core().flashMintLock = false;
 
         emit FlashMint(msg.sender, to, amount, fee);
     }
@@ -78,18 +78,18 @@ abstract contract NectraFlash is NectraBase {
         _requireFlashMintUnlocked();
         _requireFlashBorrowUnlocked();
 
-        uint256 fee = amount.mulWadUp(FLASH_BORROW_FEE);
+        uint256 fee = amount.mulWadUp(_systemConfig().FLASH_BORROW_FEE);
 
-        flashBorrowLock = amount + fee;
+        _core().flashBorrowLock = amount + fee;
 
         require(
             IFlashLoanSimpleReceiver(to).executeOperation{value: amount}(address(0), amount, fee, msg.sender, data),
             OperationFailed()
         );
 
-        require(flashBorrowLock == 0, FlashBorrowNotRepaid());
+        require(_core().flashBorrowLock == 0, FlashBorrowNotRepaid());
 
-        FEE_RECIPIENT_ADDRESS.safeTransferETH(fee);
+        _systemConfig().FEE_RECIPIENT_ADDRESS.safeTransferETH(fee);
 
         emit FlashBorrow(msg.sender, to, amount, fee);
     }
@@ -97,8 +97,8 @@ abstract contract NectraFlash is NectraBase {
     /// @notice Repays an outstanding flash borrow
     /// @dev Accepts cBTC payment and clears the flash borrow lock
     function repayFlashBorrow() external payable {
-        require(msg.value == flashBorrowLock, InvalidAmount());
+        require(msg.value == _core().flashBorrowLock, InvalidAmount());
 
-        flashBorrowLock = 0;
+        _core().flashBorrowLock = 0;
     }
 }

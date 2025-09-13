@@ -31,7 +31,7 @@ abstract contract NectraRedeem is NectraBase {
 
     event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
 
-    RedemptionFeeStorage internal _redemptionFeeStorage;
+    // Migrated to namespaced core storage: see NectraCoreStorage.Layout
 
     /// @notice Redeems NUSD tokens for collateral
     /// @dev Calculates dynamic redemption fee and distributes collateral redemption across buckets
@@ -54,8 +54,8 @@ abstract contract NectraRedeem is NectraBase {
             redemptionFeePercentage = 1 ether;
         }
 
-        uint256 treasuryFeePercentage = redemptionFeePercentage > REDEMPTION_FEE_TREASURY_THRESHOLD
-            ? redemptionFeePercentage - REDEMPTION_FEE_TREASURY_THRESHOLD
+        uint256 treasuryFeePercentage = redemptionFeePercentage > _systemConfig().REDEMPTION_FEE_TREASURY_THRESHOLD
+            ? redemptionFeePercentage - _systemConfig().REDEMPTION_FEE_TREASURY_THRESHOLD
             : 0;
 
         uint256 collateralRedeemed =
@@ -76,12 +76,12 @@ abstract contract NectraRedeem is NectraBase {
 
         _finalizeGlobal(globalState);
 
-        NUSDToken(NUSD_TOKEN_ADDRESS).burn(msg.sender, amount);
+        NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).burn(msg.sender, amount);
         // Transfer the collateral to the user
         address(msg.sender).safeTransferETH(collateralRedeemed);
 
         if (treasuryCollateralRedeemed > 0) {
-            FEE_RECIPIENT_ADDRESS.safeTransferETH(treasuryCollateralRedeemed);
+            _systemConfig().FEE_RECIPIENT_ADDRESS.safeTransferETH(treasuryCollateralRedeemed);
         }
 
         emit Redemption(amount, collateralRedeemed, redemptionFeePercentage);
@@ -103,8 +103,8 @@ abstract contract NectraRedeem is NectraBase {
         uint256 amountRemaining = amount;
         uint256 bucketId = 0;
         uint256 bitMaskIndex = 0;
-        uint256 bitMask = _bucketBitMasks[bitMaskIndex];
-        uint256 interestRate = MINIMUM_INTEREST_RATE;
+        uint256 bitMask = _core()._bucketBitMasks[bitMaskIndex];
+        uint256 interestRate = _systemConfig().MINIMUM_INTEREST_RATE;
 
         uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
 
@@ -114,27 +114,27 @@ abstract contract NectraRedeem is NectraBase {
 
                 if (shiftedMask == 0) {
                     bitMaskIndex++;
-                    bitMask = _bucketBitMasks[bitMaskIndex];
+                    bitMask = _core()._bucketBitMasks[bitMaskIndex];
                     bucketId = bitMaskIndex * 256;
-                    interestRate = MINIMUM_INTEREST_RATE + bucketId * INTEREST_RATE_INCREMENT;
+                    interestRate = _systemConfig().MINIMUM_INTEREST_RATE + bucketId * _systemConfig().INTEREST_RATE_INCREMENT;
                     continue;
                 }
 
                 {
                     bucketId += NectraMathLib.findFirstSet(shiftedMask);
-                    interestRate = MINIMUM_INTEREST_RATE + bucketId * INTEREST_RATE_INCREMENT;
+                    interestRate = _systemConfig().MINIMUM_INTEREST_RATE + bucketId * _systemConfig().INTEREST_RATE_INCREMENT;
                 }
             }
 
-            require(interestRate <= MAXIMUM_INTEREST_RATE, InsufficientCollateral());
+            require(interestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InsufficientCollateral());
 
             NectraLib.BucketState memory bucket =
-                _loadAndUpdateBucketState(interestRate, _epochs[interestRate], globalState);
+                _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], globalState);
 
             uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
 
             if (
-                bucket.collateral.mulWad(collateralPrice).divWad(FULL_LIQUIDATION_RATIO + OPEN_FEE_PERCENTAGE)
+                bucket.collateral.mulWad(collateralPrice).divWad(_systemConfig().FULL_LIQUIDATION_RATIO + _systemConfig().OPEN_FEE_PERCENTAGE)
                     < bucketDebt
             ) {
                 // if the bucket is likely insolvent, skip it but don't
@@ -163,14 +163,14 @@ abstract contract NectraRedeem is NectraBase {
                 _finalizeBucket(bucket);
 
                 if (bucket.globalDebtShares == 0) {
-                    _epochs[interestRate]++;
+                    _core()._epochs[interestRate]++;
                     // toggle the bit in the bit mask as we have fully redeemed from this bucket
                     bitMask &= ~(1 << (bucketId % 256));
                 }
             }
 
             if (bucketId % 256 == 0xFF || amountRemaining == 0) {
-                _bucketBitMasks[bitMaskIndex] = bitMask;
+                _core()._bucketBitMasks[bitMaskIndex] = bitMask;
                 if (amountRemaining == 0) break;
             }
         }
@@ -184,10 +184,14 @@ abstract contract NectraRedeem is NectraBase {
         internal
         returns (uint256)
     {
-        RedemptionFeeStorage memory redemptionFeeData = _redemptionFeeStorage;
+        RedemptionFeeStorage memory redemptionFeeData = RedemptionFeeStorage({
+            redemptionBuffer: _core().redemptionBuffer,
+            lastUpdateTimestamp: _core().redemptionLastUpdateTimestamp
+        });
         uint256 fee = _calculateRedemptionFee(redemptionFeeData, globalState, amount);
 
-        _redemptionFeeStorage = redemptionFeeData;
+        _core().redemptionBuffer = redemptionFeeData.redemptionBuffer;
+        _core().redemptionLastUpdateTimestamp = redemptionFeeData.lastUpdateTimestamp;
         return fee;
     }
 
@@ -202,20 +206,20 @@ abstract contract NectraRedeem is NectraBase {
         uint256 amount
     ) internal view returns (uint256) {
         uint256 elapsedTime = (block.timestamp - redemptionFeeData.lastUpdateTimestamp);
-        if (elapsedTime >= REDEMPTION_FEE_DECAY_PERIOD) {
+        if (elapsedTime >= _systemConfig().REDEMPTION_FEE_DECAY_PERIOD) {
             redemptionFeeData.redemptionBuffer = 0;
         } else {
             // decay redemption buffer
             redemptionFeeData.redemptionBuffer -=
-                (redemptionFeeData.redemptionBuffer * elapsedTime) / REDEMPTION_FEE_DECAY_PERIOD;
+                (redemptionFeeData.redemptionBuffer * elapsedTime) / _systemConfig().REDEMPTION_FEE_DECAY_PERIOD;
         }
 
         uint256 redemptionFee = _dynamicRedemptionFee(
             amount,
             redemptionFeeData.redemptionBuffer,
             globalState.debt,
-            REDEMPTION_DYNAMIC_FEE_SCALAR,
-            REDEMPTION_BASE_FEE
+            _systemConfig().REDEMPTION_DYNAMIC_FEE_SCALAR,
+            _systemConfig().REDEMPTION_BASE_FEE
         );
 
         redemptionFeeData.redemptionBuffer += amount;
@@ -255,7 +259,10 @@ abstract contract NectraRedeem is NectraBase {
     /// @return redemptionFee Calculated redemption fee percentage
     function getRedemptionFee(uint256 amount) external view returns (uint256) {
         NectraLib.GlobalState memory globalState = _loadGlobalState();
-        RedemptionFeeStorage memory redemptionFeeData = _redemptionFeeStorage;
+        RedemptionFeeStorage memory redemptionFeeData = RedemptionFeeStorage({
+            redemptionBuffer: _core().redemptionBuffer,
+            lastUpdateTimestamp: _core().redemptionLastUpdateTimestamp
+        });
 
         return _calculateRedemptionFee(redemptionFeeData, globalState, amount);
     }

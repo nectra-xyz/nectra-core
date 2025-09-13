@@ -5,6 +5,8 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
+import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
+import {NectraCoreStorage} from "src/storage/NectraCoreStorage.sol";
 
 /// @title NectraBase
 /// @notice Base contract containing core state management and configuration for the Nectra protocol
@@ -70,50 +72,14 @@ contract NectraBase {
     error FlashBorrowInProgress();
     error InvalidCollateralPrice();
 
-    uint256 internal LIQUIDATION_RATIO;
-    uint256 internal FULL_LIQUIDATION_RATIO;
-    uint256 internal ISSUANCE_RATIO;
+    // Namespaced storage accessors
+    function _systemConfig() internal pure returns (NectraConfigStorage.Layout storage s) {
+        return NectraConfigStorage.layout();
+    }
 
-    uint256 internal LIQUIDATION_PENALTY_PERCENTAGE;
-    uint256 internal LIQUIDATOR_REWARD_PERCENTAGE;
-    uint256 internal MAX_LIQUIDATOR_REWARD;
-    uint256 internal FULL_LIQUIDATOR_FEE;
-
-    uint256 internal REDEMPTION_FEE_DECAY_PERIOD;
-    uint256 internal REDEMPTION_BASE_FEE;
-    uint256 internal REDEMPTION_DYNAMIC_FEE_SCALAR;
-    uint256 internal REDEMPTION_FEE_TREASURY_THRESHOLD;
-
-    uint256 internal MAXIMUM_INTEREST_RATE;
-    uint256 internal MINIMUM_INTEREST_RATE;
-    uint256 internal INTEREST_RATE_INCREMENT;
-
-    uint256 internal OPEN_FEE_PERCENTAGE;
-
-    uint256 internal MINIMUM_COLLATERAL;
-    uint256 internal MINIMUM_BORROW;
-
-    uint256 internal FLASH_MINT_FEE;
-    uint256 internal FLASH_BORROW_FEE;
-
-    address internal NECTRA_NFT_ADDRESS;
-    address internal NUSD_TOKEN_ADDRESS;
-    address internal ORACLE_ADDRESS;
-    address internal FEE_RECIPIENT_ADDRESS;
-
-    bool internal flashMintLock;
-    uint256 internal flashBorrowLock;
-
-    Globals internal _globals;
-
-    // interestRate => epoch => Bucket
-    mapping(uint256 => mapping(uint256 => Bucket)) internal _buckets;
-    // interestRate => epoch
-    mapping(uint256 => uint256) internal _epochs;
-    // positionId => Position
-    mapping(uint256 => Position) internal _positions;
-    // interestRate => bucketBitMask
-    mapping(uint256 => uint256) internal _bucketBitMasks;
+    function _core() internal pure returns (NectraCoreStorage.Layout storage s) {
+        return NectraCoreStorage.layout();
+    }
 
     /// @notice Constructor arguments for initializing the contract
     /// @param nectraNFTAddress Address of the NectraNFT contract
@@ -167,54 +133,55 @@ contract NectraBase {
 
     /// @param args Constructor arguments containing all configuration parameters
     function setSystemParams(SystemParams memory args) internal {
-        NECTRA_NFT_ADDRESS = args.nectraNFTAddress;
-        NUSD_TOKEN_ADDRESS = args.nusdTokenAddress;
-        ORACLE_ADDRESS = args.oracleAddress;
-        FEE_RECIPIENT_ADDRESS = args.feeRecipientAddress;
+        NectraConfigStorage.Layout storage c = _systemConfig();
+        c.NECTRA_NFT_ADDRESS = args.nectraNFTAddress;
+        c.NUSD_TOKEN_ADDRESS = args.nusdTokenAddress;
+        c.ORACLE_ADDRESS = args.oracleAddress;
+        c.FEE_RECIPIENT_ADDRESS = args.feeRecipientAddress;
 
-        MINIMUM_COLLATERAL = args.minimumCollateral;
-        MINIMUM_BORROW = args.minimumDebt;
+        c.MINIMUM_COLLATERAL = args.minimumCollateral;
+        c.MINIMUM_BORROW = args.minimumDebt;
 
-        MAXIMUM_INTEREST_RATE = args.maximumInterestRate;
-        MINIMUM_INTEREST_RATE = args.minimumInterestRate;
-        INTEREST_RATE_INCREMENT = args.interestRateIncrement;
+        c.MAXIMUM_INTEREST_RATE = args.maximumInterestRate;
+        c.MINIMUM_INTEREST_RATE = args.minimumInterestRate;
+        c.INTEREST_RATE_INCREMENT = args.interestRateIncrement;
 
-        LIQUIDATION_RATIO = args.liquidationRatio;
-        FULL_LIQUIDATION_RATIO = args.fullLiquidationRatio;
-        ISSUANCE_RATIO = args.issuanceRatio;
+        c.LIQUIDATION_RATIO = args.liquidationRatio;
+        c.FULL_LIQUIDATION_RATIO = args.fullLiquidationRatio;
+        c.ISSUANCE_RATIO = args.issuanceRatio;
 
-        OPEN_FEE_PERCENTAGE = args.openFeePercentage;
+        c.OPEN_FEE_PERCENTAGE = args.openFeePercentage;
 
-        LIQUIDATION_PENALTY_PERCENTAGE = args.liquidationPenaltyPercentage;
-        LIQUIDATOR_REWARD_PERCENTAGE = args.liquidatorRewardPercentage;
-        MAX_LIQUIDATOR_REWARD = args.maximumLiquidatorReward;
-        FULL_LIQUIDATOR_FEE = args.fullLiquidationFee;
+        c.LIQUIDATION_PENALTY_PERCENTAGE = args.liquidationPenaltyPercentage;
+        c.LIQUIDATOR_REWARD_PERCENTAGE = args.liquidatorRewardPercentage;
+        c.MAX_LIQUIDATOR_REWARD = args.maximumLiquidatorReward;
+        c.FULL_LIQUIDATOR_FEE = args.fullLiquidationFee;
 
-        REDEMPTION_FEE_DECAY_PERIOD = args.redemptionFeeDecayPeriod;
-        REDEMPTION_BASE_FEE = args.redemptionBaseFee;
-        REDEMPTION_DYNAMIC_FEE_SCALAR = args.redemptionDynamicFeeScalar;
-        REDEMPTION_FEE_TREASURY_THRESHOLD = args.redemptionFeeTreasuryThreshold;
+        c.REDEMPTION_FEE_DECAY_PERIOD = args.redemptionFeeDecayPeriod;
+        c.REDEMPTION_BASE_FEE = args.redemptionBaseFee;
+        c.REDEMPTION_DYNAMIC_FEE_SCALAR = args.redemptionDynamicFeeScalar;
+        c.REDEMPTION_FEE_TREASURY_THRESHOLD = args.redemptionFeeTreasuryThreshold;
 
-        FLASH_MINT_FEE = args.flashMintFee;
-        FLASH_BORROW_FEE = args.flashBorrowFee;
+        c.FLASH_MINT_FEE = args.flashMintFee;
+        c.FLASH_BORROW_FEE = args.flashBorrowFee;
     }
 
     /// @notice Checks if flash minting is currently unlocked
     /// @dev Reverts if a flash mint operation is in progress
     function _requireFlashMintUnlocked() internal view {
-        require(flashMintLock == false, FlashMintInProgress());
+        require(_core().flashMintLock == false, FlashMintInProgress());
     }
 
     /// @notice Checks if flash borrowing is currently unlocked
     /// @dev Reverts if a flash borrow operation is in progress
     function _requireFlashBorrowUnlocked() internal view {
-        require(flashBorrowLock == 0, FlashBorrowInProgress());
+        require(_core().flashBorrowLock == 0, FlashBorrowInProgress());
     }
 
     /// @notice Loads the current global state
     /// @return Global state of the system
     function _loadGlobalState() internal view returns (NectraLib.GlobalState memory) {
-        Globals storage globals = _globals;
+        NectraCoreStorage.Globals storage globals = _core()._globals;
         return NectraLib.GlobalState({
             totalDebtShares: globals.totalDebtShares,
             debt: globals.debt,
@@ -234,7 +201,7 @@ contract NectraBase {
         view
         returns (NectraLib.BucketState memory)
     {
-        Bucket storage bucketStorage = _buckets[interestRate][epoch];
+        NectraCoreStorage.Bucket storage bucketStorage = _core()._buckets[interestRate][epoch];
 
         NectraLib.BucketState memory bucket = NectraLib.BucketState({
             interestRate: interestRate,
@@ -279,7 +246,7 @@ contract NectraBase {
         view
         returns (NectraLib.BucketState memory, NectraLib.GlobalState memory)
     {
-        Globals storage globals = _globals;
+        NectraCoreStorage.Globals storage globals = _core()._globals;
         NectraLib.GlobalState memory global = NectraLib.GlobalState({
             totalDebtShares: globals.totalDebtShares,
             debt: globals.debt,
@@ -304,7 +271,7 @@ contract NectraBase {
         view
         returns (NectraLib.PositionState memory, NectraLib.BucketState memory, NectraLib.GlobalState memory)
     {
-        Position storage positionStorage = _positions[tokenId];
+        NectraCoreStorage.Position storage positionStorage = _core()._positions[tokenId];
         NectraLib.PositionState memory position = NectraLib.PositionState({
             tokenId: tokenId,
             collateral: positionStorage.collateral,
@@ -322,7 +289,7 @@ contract NectraBase {
 
         NectraLib.updateBucketAndPosition(position, bucket, global, block.timestamp);
 
-        uint256 currentEpoch = _epochs[position.interestRate];
+        uint256 currentEpoch = _core()._epochs[position.interestRate];
 
         if (position.bucketEpoch < currentEpoch) {
             uint256 realizedFee = NectraLib.calculateOutstandingFee(position, bucket);
@@ -368,7 +335,7 @@ contract NectraBase {
         }
         _storeBucketBitMask(position.interestRate, bucketBitMask);
 
-        _positions[position.tokenId] = Position({
+        _core()._positions[position.tokenId] = NectraCoreStorage.Position({
             interestRate: position.interestRate,
             bucketEpoch: position.bucketEpoch,
             collateral: position.collateral,
@@ -378,7 +345,7 @@ contract NectraBase {
             targetAccumulatedInterestPerBucketShare: position.targetAccumulatedInterestPerBucketShare
         });
 
-        _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
+        _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]] = NectraCoreStorage.Bucket({
             collateral: bucket.collateral,
             totalDebtShares: bucket.totalDebtShares,
             globalDebtShares: bucket.globalDebtShares,
@@ -397,16 +364,15 @@ contract NectraBase {
     /// @dev Updates global storage and mints fees to the fee recipient if any are accumulated
     /// @param global The final global state to store
     function _finalizeGlobal(NectraLib.GlobalState memory global) internal {
-        _globals = Globals({
-            totalDebtShares: global.totalDebtShares,
-            debt: global.debt,
-            accumulatedLiquidatedCollateralPerShare: global.accumulatedLiquidatedCollateralPerShare,
-            accumulatedLiquidatedDebtPerShare: global.accumulatedLiquidatedDebtPerShare,
-            unrealizedLiquidatedDebt: global.unrealizedLiquidatedDebt
-        });
+        NectraCoreStorage.Globals storage g = _core()._globals;
+        g.totalDebtShares = global.totalDebtShares;
+        g.debt = global.debt;
+        g.accumulatedLiquidatedCollateralPerShare = global.accumulatedLiquidatedCollateralPerShare;
+        g.accumulatedLiquidatedDebtPerShare = global.accumulatedLiquidatedDebtPerShare;
+        g.unrealizedLiquidatedDebt = global.unrealizedLiquidatedDebt;
 
         if (global.fees > 0) {
-            NUSDToken(NUSD_TOKEN_ADDRESS).mint(FEE_RECIPIENT_ADDRESS, global.fees);
+            NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(_systemConfig().FEE_RECIPIENT_ADDRESS, global.fees);
             global.fees = 0; // reset fees after minting
         }
     }
@@ -415,7 +381,7 @@ contract NectraBase {
     /// @dev Updates bucket storage with the final state values
     /// @param bucket The final bucket state to store
     function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
-        _buckets[bucket.interestRate][_epochs[bucket.interestRate]] = Bucket({
+        _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]] = NectraCoreStorage.Bucket({
             collateral: bucket.collateral,
             totalDebtShares: bucket.totalDebtShares,
             globalDebtShares: bucket.globalDebtShares,
@@ -432,7 +398,7 @@ contract NectraBase {
     /// @param interestRate The interest rate to calculate the bucket index for
     /// @return The calculated bucket index
     function _getBucketIndex(uint256 interestRate) internal view returns (uint256) {
-        return (interestRate - MINIMUM_INTEREST_RATE) / INTEREST_RATE_INCREMENT;
+        return (interestRate - _systemConfig().MINIMUM_INTEREST_RATE) / _systemConfig().INTEREST_RATE_INCREMENT;
     }
 
     /// @notice Calculates the index for the bucket bit mask
@@ -447,7 +413,7 @@ contract NectraBase {
     /// @param interestRate The interest rate to get the bit mask for
     /// @return bitMask The stored bit mask for the interest rate
     function _bucketBitMask(uint256 interestRate) internal view returns (uint256 bitMask) {
-        return _bucketBitMasks[_getBucketBitMaskIndex(interestRate)];
+        return _core()._bucketBitMasks[_getBucketBitMaskIndex(interestRate)];
     }
 
     /// @notice Stores a bit mask for a given interest rate
@@ -455,14 +421,14 @@ contract NectraBase {
     /// @param interestRate The interest rate to store the bit mask for
     /// @param bitMask The bit mask to store
     function _storeBucketBitMask(uint256 interestRate, uint256 bitMask) internal {
-        _bucketBitMasks[_getBucketBitMaskIndex(interestRate)] = bitMask;
+        _core()._bucketBitMasks[_getBucketBitMaskIndex(interestRate)] = bitMask;
     }
 
     /// @notice Gets the collateral price with circuit breaker check
     /// @dev Reverts if the price is invalid or stale
     /// @return The current collateral price
     function _collateralPriceWithCircuitBreaker() internal view returns (uint256) {
-        (uint256 collateralPrice, bool isStale) = OracleAggregator(ORACLE_ADDRESS).getLatestPrice();
+        (uint256 collateralPrice, bool isStale) = OracleAggregator(_systemConfig().ORACLE_ADDRESS).getLatestPrice();
         require(collateralPrice > 0 && isStale == false, InvalidCollateralPrice());
         return collateralPrice;
     }
@@ -471,7 +437,7 @@ contract NectraBase {
     /// @dev Returns 0 if the price is stale
     /// @return The current collateral price, or 0 if stale
     function _collateralPrice() internal view returns (uint256) {
-        (uint256 collateralPrice, bool isStale) = OracleAggregator(ORACLE_ADDRESS).getLatestPrice();
+        (uint256 collateralPrice, bool isStale) = OracleAggregator(_systemConfig().ORACLE_ADDRESS).getLatestPrice();
         return !isStale ? collateralPrice : 0;
     }
 }

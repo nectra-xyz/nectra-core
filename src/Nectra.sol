@@ -115,12 +115,12 @@ contract Nectra is
             }
 
             require(
-                NectraNFT(NECTRA_NFT_ADDRESS).authorized(tokenId, msg.sender, permissionBitMask), NotOwnerNorApproved()
+                NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).authorized(tokenId, msg.sender, permissionBitMask), NotOwnerNorApproved()
             );
         } else {
-            (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _epochs[interestRate]);
+            (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
             position = NectraLib.PositionState({
-                tokenId: NectraNFT(NECTRA_NFT_ADDRESS).mint(msg.sender),
+                tokenId: NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).mint(msg.sender),
                 collateral: 0,
                 debtShares: 0,
                 lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
@@ -146,14 +146,14 @@ contract Nectra is
 
         if (borrowOrRepay > 0) {
             // mint NUSD
-            NUSDToken(NUSD_TOKEN_ADDRESS).mint(msg.sender, uint256(borrowOrRepay));
+            NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(msg.sender, uint256(borrowOrRepay));
         } else if (borrowOrRepay < 0) {
             if (permit.length > 0) {
                 // solhint-disable-next-line avoid-low-level-calls
-                NUSD_TOKEN_ADDRESS.call(abi.encodePacked(NUSDToken.permit.selector, permit));
+                _systemConfig().NUSD_TOKEN_ADDRESS.call(abi.encodePacked(NUSDToken.permit.selector, permit));
             }
             // burn NUSD
-            NUSDToken(NUSD_TOKEN_ADDRESS).burn(msg.sender, uint256(-borrowOrRepay));
+            NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).burn(msg.sender, uint256(-borrowOrRepay));
         }
 
         if (depositOrWithdraw < 0) {
@@ -198,7 +198,7 @@ contract Nectra is
             if (tokenId != 0) {
                 (position, bucket, global) = _loadAndUpdateState(tokenId);
             } else {
-                (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _epochs[interestRate]);
+                (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
                 position = NectraLib.PositionState({
                     tokenId: 0,
                     collateral: 0,
@@ -237,9 +237,9 @@ contract Nectra is
         int256 borrowOrRepay,
         uint256 interestRate
     ) internal view returns (int256, int256, uint256, uint256) {
-        require(interestRate <= MAXIMUM_INTEREST_RATE, InterestRateTooHigh(interestRate, MAXIMUM_INTEREST_RATE));
-        require(interestRate >= MINIMUM_INTEREST_RATE, InterestRateTooLow(interestRate, MINIMUM_INTEREST_RATE));
-        require(interestRate % INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
+        require(interestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InterestRateTooHigh(interestRate, _systemConfig().MAXIMUM_INTEREST_RATE));
+        require(interestRate >= _systemConfig().MINIMUM_INTEREST_RATE, InterestRateTooLow(interestRate, _systemConfig().MINIMUM_INTEREST_RATE));
+        require(interestRate % _systemConfig().INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
 
         if (depositOrWithdraw < 0) {
             // Cannot withdraw collateral if a flash borrow is active
@@ -264,7 +264,7 @@ contract Nectra is
 
         // Fee realization logic
         if (interestRate < position.interestRate) {
-            uint256 newFee = uint256(effectiveDebt.toInt256() + borrowOrRepay).mulWad(OPEN_FEE_PERCENTAGE);
+            uint256 newFee = uint256(effectiveDebt.toInt256() + borrowOrRepay).mulWad(_systemConfig().OPEN_FEE_PERCENTAGE);
 
             // Realize all outstanding fees when lowering interest rate
             realizedFee += outstandingFees;
@@ -283,7 +283,7 @@ contract Nectra is
             outstandingFees -= realizedFee;
         } else if (borrowOrRepay > 0) {
             // Borrowing case
-            uint256 newFee = uint256(borrowOrRepay).mulWad(OPEN_FEE_PERCENTAGE);
+            uint256 newFee = uint256(borrowOrRepay).mulWad(_systemConfig().OPEN_FEE_PERCENTAGE);
             outstandingFees += newFee;
             effectiveDebt += newFee;
         }
@@ -300,7 +300,7 @@ contract Nectra is
 
         if (interestRate != position.interestRate && position.debtShares > 0) {
             NectraLib.copy(oldBucket, bucket);
-            NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _epochs[interestRate], global));
+            NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
 
             NectraLib.migrateBucket({position: position, srcBucket: oldBucket, dstBucket: bucket, global: global});
         }
@@ -315,12 +315,12 @@ contract Nectra is
         effectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
 
         require(
-            position.collateral >= MINIMUM_COLLATERAL || position.collateral == 0,
-            MinimumDepositNotMet(position.collateral, MINIMUM_COLLATERAL)
+            position.collateral >= _systemConfig().MINIMUM_COLLATERAL || position.collateral == 0,
+            MinimumDepositNotMet(position.collateral, _systemConfig().MINIMUM_COLLATERAL)
         );
         require(
-            effectiveDebt >= MINIMUM_BORROW || (effectiveDebt == 0 && position.collateral == 0),
-            MinimumDebtNotMet(effectiveDebt, MINIMUM_BORROW)
+            effectiveDebt >= _systemConfig().MINIMUM_BORROW || (effectiveDebt == 0 && position.collateral == 0),
+            MinimumDebtNotMet(effectiveDebt, _systemConfig().MINIMUM_BORROW)
         );
 
         // Can always improve c-ratio
@@ -331,14 +331,14 @@ contract Nectra is
             require(
                 global.debt + global.unrealizedLiquidatedDebt == 0
                     || (address(this).balance).mulDiv(collateralPrice, global.debt + global.unrealizedLiquidatedDebt)
-                        >= ISSUANCE_RATIO,
+                        >= _systemConfig().ISSUANCE_RATIO,
                 InsufficientCollateral()
             );
 
             uint256 cratio = position.collateral.mulWad(collateralPrice).divWad(effectiveDebt);
 
             // Check position collateralization ratio
-            require(cratio >= ISSUANCE_RATIO, InvalidCollateralizationRatio(cratio, ISSUANCE_RATIO));
+            require(cratio >= _systemConfig().ISSUANCE_RATIO, InvalidCollateralizationRatio(cratio, _systemConfig().ISSUANCE_RATIO));
         }
 
         return (depositOrWithdraw, borrowOrRepay, position.collateral, effectiveDebt);
@@ -364,7 +364,7 @@ contract Nectra is
         NectraLib.BucketState memory bucket;
         NectraLib.GlobalState memory global;
 
-        (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _epochs[interestRate]);
+        (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
 
         _finalizeBucket(bucket);
         _finalizeGlobal(global);

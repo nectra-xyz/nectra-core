@@ -5,6 +5,7 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
 import {NectraBase} from "src/NectraBase.sol";
+import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
 
 /// @title NectraViews
 /// @notice View functions for querying position, bucket, and global state
@@ -38,7 +39,7 @@ abstract contract NectraViews is NectraBase {
         returns (NectraLib.BucketState memory, NectraLib.GlobalState memory)
     {
         (NectraLib.BucketState memory bucket, NectraLib.GlobalState memory global) =
-            _loadAndUpdateBucketAndGlobalState(interestRate, _epochs[interestRate]);
+            _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
 
         return (bucket, global);
     }
@@ -52,30 +53,31 @@ abstract contract NectraViews is NectraBase {
     /// @notice Gets the system configuration values
     /// @return Complete set of system configuration values
     function getConfig() external view returns (NectraBase.SystemParams memory) {
+        NectraConfigStorage.Layout storage c = _systemConfig();
         NectraBase.SystemParams memory params = NectraBase.SystemParams({
-            nectraNFTAddress: NECTRA_NFT_ADDRESS,
-            nusdTokenAddress: NUSD_TOKEN_ADDRESS,
-            oracleAddress: ORACLE_ADDRESS,
-            feeRecipientAddress: FEE_RECIPIENT_ADDRESS,
-            minimumCollateral: MINIMUM_COLLATERAL,
-            minimumDebt: MINIMUM_BORROW,
-            maximumInterestRate: MAXIMUM_INTEREST_RATE,
-            minimumInterestRate: MINIMUM_INTEREST_RATE,
-            interestRateIncrement: INTEREST_RATE_INCREMENT,
-            liquidationRatio: LIQUIDATION_RATIO,
-            liquidatorRewardPercentage: LIQUIDATOR_REWARD_PERCENTAGE,
-            liquidationPenaltyPercentage: LIQUIDATION_PENALTY_PERCENTAGE,
-            fullLiquidationRatio: FULL_LIQUIDATION_RATIO,
-            fullLiquidationFee: FULL_LIQUIDATOR_FEE,
-            maximumLiquidatorReward: MAX_LIQUIDATOR_REWARD,
-            issuanceRatio: ISSUANCE_RATIO,
-            redemptionFeeDecayPeriod: REDEMPTION_FEE_DECAY_PERIOD,
-            redemptionBaseFee: REDEMPTION_BASE_FEE,
-            redemptionDynamicFeeScalar: REDEMPTION_DYNAMIC_FEE_SCALAR,
-            redemptionFeeTreasuryThreshold: REDEMPTION_FEE_TREASURY_THRESHOLD,
-            openFeePercentage: OPEN_FEE_PERCENTAGE,
-            flashMintFee: FLASH_MINT_FEE,
-            flashBorrowFee: FLASH_BORROW_FEE
+            nectraNFTAddress: c.NECTRA_NFT_ADDRESS,
+            nusdTokenAddress: c.NUSD_TOKEN_ADDRESS,
+            oracleAddress: c.ORACLE_ADDRESS,
+            feeRecipientAddress: c.FEE_RECIPIENT_ADDRESS,
+            minimumCollateral: c.MINIMUM_COLLATERAL,
+            minimumDebt: c.MINIMUM_BORROW,
+            maximumInterestRate: c.MAXIMUM_INTEREST_RATE,
+            minimumInterestRate: c.MINIMUM_INTEREST_RATE,
+            interestRateIncrement: c.INTEREST_RATE_INCREMENT,
+            liquidationRatio: c.LIQUIDATION_RATIO,
+            liquidatorRewardPercentage: c.LIQUIDATOR_REWARD_PERCENTAGE,
+            liquidationPenaltyPercentage: c.LIQUIDATION_PENALTY_PERCENTAGE,
+            fullLiquidationRatio: c.FULL_LIQUIDATION_RATIO,
+            fullLiquidationFee: c.FULL_LIQUIDATOR_FEE,
+            maximumLiquidatorReward: c.MAX_LIQUIDATOR_REWARD,
+            issuanceRatio: c.ISSUANCE_RATIO,
+            redemptionFeeDecayPeriod: c.REDEMPTION_FEE_DECAY_PERIOD,
+            redemptionBaseFee: c.REDEMPTION_BASE_FEE,
+            redemptionDynamicFeeScalar: c.REDEMPTION_DYNAMIC_FEE_SCALAR,
+            redemptionFeeTreasuryThreshold: c.REDEMPTION_FEE_TREASURY_THRESHOLD,
+            openFeePercentage: c.OPEN_FEE_PERCENTAGE,
+            flashMintFee: c.FLASH_MINT_FEE,
+            flashBorrowFee: c.FLASH_BORROW_FEE
         });
 
         return params;
