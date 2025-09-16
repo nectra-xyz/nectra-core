@@ -3,14 +3,17 @@ pragma solidity ^0.8.23;
 
 import {ISwapRouter} from "src/interfaces/Satsuma/ISwapRouter.sol";
 import {IQuoterV2} from "src/interfaces/Satsuma/IQuoterV2.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
 import {IWCBTC} from "src/interfaces/IWCBTC.sol";
 import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
+// use OZ IERC20 instead of our own for safeTransfer functionality
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {console} from "forge-std/console.sol";
 
 contract SatsumaHandler {
     using SafeTransferLib for address;
+    using SafeERC20 for IERC20;
 
     ISwapRouter public swapRouter;
     IQuoterV2 public quoter;
@@ -28,6 +31,11 @@ contract SatsumaHandler {
     }
 
     // ============ INTERNAL HELPER FUNCTIONS ============
+    /// @notice Internal function to get the WCBTC token
+    /// @return The WCBTC token
+    function _WCBTCToken() internal view returns (IERC20) {
+        return IERC20(address(WCBTC));
+    }
 
     /// @notice Internal function to get exact input quote
     function _getExactInputQuote(address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice)
@@ -118,14 +126,12 @@ contract SatsumaHandler {
     function _transferRemainingBalances() internal {
         uint256 nusdBalAfter = nUSD.balanceOf(address(this));
         if (nusdBalAfter > 0) {
-            require(nUSD.transfer(msg.sender, nusdBalAfter), TransferFailed(address(nUSD), msg.sender, nusdBalAfter));
+            nUSD.safeTransfer(msg.sender, nusdBalAfter);
         }
 
-        uint256 wcbTcBalAfter = WCBTC.balanceOf(address(this));
+        uint256 wcbTcBalAfter = _WCBTCToken().balanceOf(address(this));
         if (wcbTcBalAfter > 0) {
-            require(
-                WCBTC.transfer(msg.sender, wcbTcBalAfter), TransferFailed(address(WCBTC), msg.sender, wcbTcBalAfter)
-            );
+            _WCBTCToken().safeTransfer(msg.sender, wcbTcBalAfter);
         }
     }
 
@@ -133,10 +139,10 @@ contract SatsumaHandler {
     function _transferRemainingBalancesWithCBTCConversion() internal {
         uint256 nusdBalAfter = nUSD.balanceOf(address(this));
         if (nusdBalAfter > 0) {
-            require(nUSD.transfer(msg.sender, nusdBalAfter), TransferFailed(address(nUSD), msg.sender, nusdBalAfter));
+            nUSD.safeTransfer(msg.sender, nusdBalAfter);
         }
 
-        uint256 wcbTcBalAfter = WCBTC.balanceOf(address(this));
+        uint256 wcbTcBalAfter = _WCBTCToken().balanceOf(address(this));
         if (wcbTcBalAfter > 0) {
             WCBTC.withdraw(wcbTcBalAfter);
             msg.sender.safeTransferETH(wcbTcBalAfter);
@@ -192,21 +198,21 @@ contract SatsumaHandler {
     // ============ NUSD -> WCBTC/cBTC SWAP FUNCTIONS ============
 
     function swapNUSDToWCBTCExactInput(uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice) external {
-        nUSD.transferFrom(msg.sender, address(this), amountIn);
+        nUSD.safeTransferFrom(msg.sender, address(this), amountIn);
 
         _executeExactInputSwap(address(nUSD), address(WCBTC), amountIn, amountOutMinimum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
     function swapNUSDToWCBTCExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
-        nUSD.transferFrom(msg.sender, address(this), amountInMaximum);
+        nUSD.safeTransferFrom(msg.sender, address(this), amountInMaximum);
 
         _executeExactOutputSwap(address(nUSD), address(WCBTC), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
     function swapNUSDToCBTCExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
-        nUSD.transferFrom(msg.sender, address(this), amountInMaximum);
+        nUSD.safeTransferFrom(msg.sender, address(this), amountInMaximum);
 
         _executeExactOutputSwap(address(nUSD), address(WCBTC), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalancesWithCBTCConversion();
@@ -215,14 +221,14 @@ contract SatsumaHandler {
     // ============ WCBTC/cBTC -> NUSD SWAP FUNCTIONS ============
 
     function swapWCBTCToNUSDExactInput(uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice) external {
-        WCBTC.transferFrom(msg.sender, address(this), amountIn);
+        _WCBTCToken().safeTransferFrom(msg.sender, address(this), amountIn);
 
         _executeExactInputSwap(address(WCBTC), address(nUSD), amountIn, amountOutMinimum, limitSqrtPrice);
         _transferRemainingBalances();
     }
 
     function swapWCBTCToNUSDExactOutput(uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice) external {
-        WCBTC.transferFrom(msg.sender, address(this), amountInMaximum);
+        _WCBTCToken().safeTransferFrom(msg.sender, address(this), amountInMaximum);
 
         _executeExactOutputSwap(address(WCBTC), address(nUSD), amountOut, amountInMaximum, limitSqrtPrice);
         _transferRemainingBalances();
