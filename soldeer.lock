@@ -1,0 +1,24 @@
+[[dependencies]]
+name = "forge-std"
+version = "1.10.0"
+url = "https://soldeer-revisions.s3.amazonaws.com/forge-std/1_10_0_02-08-2025_06:50:35_forge-std-1.10.zip"
+checksum = "8cc59e92a7762c170c15f2102c4f3718106dfc78239978fe87c64f316740cc09"
+integrity = "3fd441e2499c5cf04ef9b4126f52150a50dcef9cac1645ff7a955345e947cd04"
+
+[[dependencies]]
+name = "openzeppelin-contracts"
+version = "5.4.0"
+git = "https://github.com/OpenZeppelin/openzeppelin-contracts.git"
+rev = "0fc8e4b5e2e4a6c31e17f1821ccc4bf76c4e22cd"
+
+[[dependencies]]
+name = "openzeppelin-contracts-upgradeable"
+version = "5.4.0"
+git = "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git"
+rev = "b6405466212077af96443edce95d3368d6ffb005"
+
+[[dependencies]]
+name = "openzeppelin-foundry-upgrades"
+version = "0.4.0"
+git = "https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades.git"
+rev = "cfd861bc18ef4737e82eae6ec75304e27af699ef"

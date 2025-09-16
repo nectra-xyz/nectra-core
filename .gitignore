@@ -13,3 +13,9 @@ docs/
 
 # Dotenv file
 .env
+
+# Installed libraries
+lib/
+
+# Soldeer
+/dependencies
