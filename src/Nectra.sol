@@ -98,6 +98,7 @@ contract Nectra is
         uint256 interestRate = _systemInterestRate();
 
         if (tokenId != 0) {
+            // load bucket using existing position interest rate
             (position, bucket, global) = _loadAndUpdateState(tokenId);
 
             uint256 permissionBitMask;
@@ -117,6 +118,7 @@ contract Nectra is
                 NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).authorized(tokenId, msg.sender, permissionBitMask), NotOwnerNorApproved()
             );
         } else {
+            // load bucket using system interest rate
             (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
             position = NectraLib.PositionState({
                 tokenId: NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).mint(msg.sender),
@@ -196,8 +198,10 @@ contract Nectra is
 
         {
             if (tokenId != 0) {
+                // load bucket using existing position interest rate
                 (position, bucket, global) = _loadAndUpdateState(tokenId);
             } else {
+                // load bucket using system interest rate
                 (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
                 position = NectraLib.PositionState({
                     tokenId: 0,
@@ -271,8 +275,8 @@ contract Nectra is
             debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
 
-        // migrate position to new bucket if interest rate changes
-        if (interestRate != position.interestRate && position.debtShares > 0) {
+        // migrate position to new bucket if interest rate changes and debt is increasing
+        if (interestRate != position.interestRate && borrowOrRepay > 0) {
             NectraLib.copy(oldBucket, bucket);
             NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
 

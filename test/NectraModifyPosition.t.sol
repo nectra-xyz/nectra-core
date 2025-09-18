@@ -789,15 +789,15 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // confirm position is correct before modification
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
-        // increase interest rate
+        // increase interest rate (must increase debt)
         nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
-        nectra.modifyPosition(tokenId, 0, 0, "");
+        nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm position is correct after increasing interest rate
         _checkPosition(
             tokenId,
             collateralAfterRedemption,
-            debtAfterRedemption,
+            debtAfterRedemption + 1,
             defaultInterestRate + systemParams.interestRateIncrement
         );
     }
@@ -809,12 +809,12 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // fully redeem the first bucket
         _createAndFullyRedeemPosition();
 
-        // migrate position to new epoch
+        // migrate position to new epoch (must increase debt)
         nectra.setSystemInterestRate(defaultInterestRate);
-        nectra.modifyPosition(tokenId, 0, 0, "");
+        nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm position is correct after migration
-        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt + 1, defaultInterestRate);
     }
 
     function test_migrating_to_a_bucket_should_change_bucket_collateral() public {
@@ -832,9 +832,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
         assertEq(initialBucketState.collateral, defaultCollateral, "Initial bucket collateral is incorrect");
         assertEq(newBucketState.collateral, 0, "New bucket collateral is incorrect");
 
-        // migrate position to new bucket
+        // migrate position to new bucket (must increase debt)
         nectra.setSystemInterestRate(newBucket);
-        nectra.modifyPosition(tokenId, 0, 0, "");
+        nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm bucket collateral is correct after migration
         (initialBucketState, ) = nectra.getBucketState(initialBucket);
