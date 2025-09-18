@@ -25,7 +25,6 @@ contract NectraExternal {
         uint256 collateral;
         uint256 debt;
         uint256 interestRate;
-        uint256 outstandingFee;
     }
 
     INectra internal immutable nectra;
@@ -97,8 +96,7 @@ contract NectraExternal {
             NectraLib.GlobalState memory globalState
         ) = nectra.getPositionState(tokenId);
 
-        return NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up)
-            + NectraLib.calculateOutstandingFee(positionState, bucketState);
+        return NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up);
     }
 
     /// @notice Gets the collateral amount of a position
@@ -129,21 +127,9 @@ contract NectraExternal {
 
         return (
             positionState.collateral,
-            NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up)
-                + NectraLib.calculateOutstandingFee(positionState, bucketState),
+            NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up),
             positionState.interestRate
         );
-    }
-
-    /// @notice Gets the outstanding fee for a position
-    /// @dev Updates position state before calculation
-    /// @param tokenId ID of the position to query
-    /// @return Amount of outstanding fees
-    function getPositionOutstandingFee(uint256 tokenId) public view returns (uint256) {
-        (NectraLib.PositionState memory positionState, NectraLib.BucketState memory bucketState,) =
-            nectra.getPositionState(tokenId);
-
-        return NectraLib.calculateOutstandingFee(positionState, bucketState);
     }
 
     /// @notice Gets the liquidation price for a position
@@ -176,14 +162,12 @@ contract NectraExternal {
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
             (uint256 collateral, uint256 debt, uint256 interestRate) = getPosition(tokenIds[i]);
-            uint256 outstandingFee = getPositionOutstandingFee(tokenIds[i]);
 
             positions[i] = PositionData({
                 tokenId: tokenIds[i],
                 collateral: collateral,
                 debt: debt,
-                interestRate: interestRate,
-                outstandingFee: outstandingFee
+                interestRate: interestRate
             });
         }
         return positions;
@@ -240,8 +224,7 @@ contract NectraExternal {
 
         uint256 debt =
             NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up);
-        uint256 closingFee = NectraLib.calculateOutstandingFee(positionState, bucketState);
-        uint256 cratio = positionState.collateral.mulWad(collateralPrice).divWad(debt + closingFee);
+        uint256 cratio = positionState.collateral.mulWad(collateralPrice).divWad(debt);
 
         return cratio <= LIQUIDATION_RATIO;
     }
@@ -264,8 +247,7 @@ contract NectraExternal {
 
         uint256 debt =
             NectraLib.calculatePositionDebt(positionState, bucketState, globalState, NectraMathLib.Rounding.Up);
-        uint256 closingFee = NectraLib.calculateOutstandingFee(positionState, bucketState);
-        uint256 cratio = positionState.collateral.mulWad(collateralPrice).divWad(debt + closingFee);
+        uint256 cratio = positionState.collateral.mulWad(collateralPrice).divWad(debt);
 
         return cratio <= FULL_LIQUIDATION_RATIO;
     }

@@ -26,6 +26,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     address internal attacker = makeAddr("attacker");
 
     uint256 dexFeesAndSlippage = 0.008 ether; // 0.8% slippage and fees
+    uint256 defaultInterestRate = 0.05 ether;
 
     function _createPosition(address _user, uint256 _initialCollateral, uint256 _desiredCollateral)
         internal
@@ -40,7 +41,6 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         tokenId = flashHandler.increasePositionExposure{value: _initialCollateral}(
             0,
             _desiredCollateral, // > initialCollateral
-            0.05 ether,
             maxDebt,
             _user
         );
@@ -51,6 +51,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         systemParams.flashMintFee = 0.0025 ether; // 0.25%
         systemParams.openFeePercentage = 0.002 ether; // 0.2%
         super.setUp();
+
+        nectra.setSystemInterestRate(defaultInterestRate);
 
         // Deploy WCBTC mock
         wcbtc = new WCBTCMock();
@@ -81,7 +83,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         oracle.setCurrentPrice(BTC_PRICE);
 
         // Setup liquidity in the DEX mock
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, int256(10000000 * UNIT), 0.05 ether, "");
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, int256(10000000 * UNIT), "");
         nectraUSD.transfer(address(satsumaMock), 10000000 * UNIT); // 10M nUSD
 
         deal(address(satsumaMock), 500 ether); // 1000 cBTC
@@ -115,7 +117,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // Verify position properties
         (uint256 collateral, uint256 debt, uint256 interestRate) = nectraExternal.getPosition(tokenId);
         assertEq(collateral, desiredCollateral, "Position should have desired collateral");
-        assertEq(interestRate, 0.05 ether, "Position should have desired interest rate");
+        assertEq(interestRate, defaultInterestRate, "Position should have desired interest rate");
         assertTrue(debt > 0, "Position should have debt");
         assertTrue(debt <= maxDebt, "Debt should not exceed maximum");
 
@@ -154,9 +156,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
         vm.prank(user);
-        uint256 returnedTokenId = flashHandler.increasePositionExposure{value: additionalValue}(
-            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user
-        );
+        uint256 returnedTokenId = flashHandler.increasePositionExposure{value: additionalValue}(tokenId, newDesiredCollateral, newMaxDebt, user);
 
         // Verify same token ID returned
         assertEq(returnedTokenId, tokenId, "Should return same token ID");
@@ -182,7 +182,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(NectraFlashHandler.DesiredCollateralTooLow.selector, desiredCollateral, msgValue)
         );
-        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, maxDebt, user);
     }
 
     function test_increasePositionExposure_revertIfDesiredCollateralTooLowForExistingPosition() public {
@@ -208,9 +208,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
                 NectraFlashHandler.DesiredCollateralTooLow.selector, newDesiredCollateral, msgValue + desiredCollateral
             )
         );
-        flashHandler.increasePositionExposure{value: msgValue}(
-            tokenId, newDesiredCollateral, 0.05 ether, type(uint256).max, user
-        );
+        flashHandler.increasePositionExposure{value: msgValue}(tokenId, newDesiredCollateral, type(uint256).max, user);
         vm.stopPrank();
     }
 
@@ -223,7 +221,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), systemParams.issuanceRatio)
         );
-        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, maxDebt, user);
     }
 
     function test_increasePositionExposure_revertIfMaxDebtExceeded() public {
@@ -238,7 +236,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt));
-        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, maxDebt, user);
     }
 
     // ============ CLOSE LEVERAGED POSITION TESTS ============
@@ -322,9 +320,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         vm.startPrank(user2);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.UnauthorizedCaller.selector, user2, user));
 
-        flashHandler.increasePositionExposure{value: extraCollateral}(
-            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user2
-        );
+        flashHandler.increasePositionExposure{value: extraCollateral}(tokenId, newDesiredCollateral, newMaxDebt, user2);
         vm.stopPrank();
     }
 
@@ -365,13 +361,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + maxDebt;
 
         vm.prank(user2);
-        flashHandler.increasePositionExposure{value: extraCollateral}(
-            tokenId,
-            newDesiredCollateral, // > 2 + 10 = 12 ether
-            0.05 ether,
-            newMaxDebt,
-            user2
-        );
+        flashHandler.increasePositionExposure{value: extraCollateral}(tokenId, newDesiredCollateral, newMaxDebt, user2);
 
         // Verify position was modified
         (uint256 collateral,,) = nectraExternal.getPosition(tokenId);
@@ -478,7 +468,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         // This should fail due to high slippage making the swap cost too much
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.MaxDebtExceeded.selector, expectedDebt, maxDebt));
-        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, 0.05 ether, maxDebt, user);
+        flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, maxDebt, user);
     }
 
     function test_flashClosePosition_slippageProtection() public {
@@ -531,7 +521,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));
-        flashHandler.increasePositionExposure{value: 1 ether}(invalidTokenId, 2 ether, 0.05 ether, maxDebt, user);
+        flashHandler.increasePositionExposure{value: 1 ether}(invalidTokenId, 2 ether, maxDebt, user);
         vm.stopPrank();
     }
 
@@ -584,9 +574,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         uint256 newMaxDebt = AdditionalSwapAmountIn * (UNIT + systemParams.openFeePercentage) / UNIT + debt1;
 
         vm.prank(user);
-        flashHandler.increasePositionExposure{value: extraCollateral}(
-            tokenId, newDesiredCollateral, 0.05 ether, newMaxDebt, user
-        );
+        flashHandler.increasePositionExposure{value: extraCollateral}(tokenId, newDesiredCollateral, newMaxDebt, user);
 
         // Verify position increased
         (uint256 collateral2, uint256 debt2,) = nectraExternal.getPosition(tokenId);

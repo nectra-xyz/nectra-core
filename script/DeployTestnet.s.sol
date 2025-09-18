@@ -62,8 +62,9 @@ contract DeployTestnet is Script {
             feeRecipientAddress: savingsAccount,
             minimumCollateral: 0, // 0 cBTC
             minimumDebt: 50 ether, // 50 nUSD
+            systemInterestRate: 0.0025 ether, // 0.25%
             maximumInterestRate: 1 ether, // 100%
-            minimumInterestRate: 0.005 ether, // 0.5%
+            minimumInterestRate: 0 ether, // 0.5%
             interestRateIncrement: 0.0001 ether, // 0.01%
             liquidationRatio: 1.1 ether, // 110%
             liquidatorRewardPercentage: 0.9 ether, // 90%

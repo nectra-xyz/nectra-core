@@ -26,6 +26,7 @@ library NectraConfigStorage {
         uint256 REDEMPTION_FEE_TREASURY_THRESHOLD;
 
         // Interest grid params
+        uint256 SYSTEM_INTEREST_RATE;
         uint256 MAXIMUM_INTEREST_RATE;
         uint256 MINIMUM_INTEREST_RATE;
         uint256 INTEREST_RATE_INCREMENT;

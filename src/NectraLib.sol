@@ -39,7 +39,6 @@ library NectraLib {
     /// @param globalDebtShares Number of shares held by the bucket in the global state
     /// @param accumulatedLiquidatedCollateralPerShare Accumulated liquidated collateral per share
     /// @param accumulatedRedeemedCollateralPerShare Accumulated redeemed collateral per share
-    /// @param accumulatedInterestPerShare Accumulated interest per share
     /// @param lastGlobalAccumulatedLiquidatedCollateralPerShare Last global liquidated collateral per share
     /// @param lastGlobalAccumulatedLiquidatedDebtPerShare Last global liquidated debt per share
     /// @param lastUpdateTime Timestamp of last bucket update
@@ -51,7 +50,6 @@ library NectraLib {
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
         uint256 accumulatedRedeemedCollateralPerShare;
-        uint256 accumulatedInterestPerShare;
         uint256 lastGlobalAccumulatedLiquidatedCollateralPerShare;
         uint256 lastGlobalAccumulatedLiquidatedDebtPerShare;
         uint256 lastUpdateTime;
@@ -65,7 +63,6 @@ library NectraLib {
     /// @param debtShares Number of debt shares for the position in its bucket
     /// @param lastBucketAccumulatedLiquidatedCollateralPerShare Last bucket liquidated collateral per share
     /// @param lastBucketAccumulatedRedeemedCollateralPerShare Last bucket redeemed collateral per share
-    /// @param targetAccumulatedInterestPerBucketShare Target accumulated interest per share
     struct PositionState {
         uint256 tokenId;
         uint256 interestRate;
@@ -74,7 +71,6 @@ library NectraLib {
         uint256 debtShares;
         uint256 lastBucketAccumulatedLiquidatedCollateralPerShare;
         uint256 lastBucketAccumulatedRedeemedCollateralPerShare;
-        uint256 targetAccumulatedInterestPerBucketShare;
     }
 
     /// @notice Updates a bucket's state with interest and liquidation calculations
@@ -136,7 +132,6 @@ library NectraLib {
                 );
 
                 bucket.globalDebtShares += newGlobalDebtShares;
-                bucket.accumulatedInterestPerShare += interest.divWad(initialBucketState.totalDebtShares);
                 global.totalDebtShares += newGlobalDebtShares;
                 global.debt += interest;
                 global.fees += interest;
@@ -183,29 +178,6 @@ library NectraLib {
             position.collateral = NectraMathLib.saturatingAdd(position.collateral, -(redeemedCollateral).toInt256());
             position.lastBucketAccumulatedRedeemedCollateralPerShare = bucket.accumulatedRedeemedCollateralPerShare;
         }
-
-        position.targetAccumulatedInterestPerBucketShare = position.targetAccumulatedInterestPerBucketShare
-            > bucket.accumulatedInterestPerShare
-            ? position.targetAccumulatedInterestPerBucketShare
-            : bucket.accumulatedInterestPerShare;
-    }
-
-    /// @notice Calculates outstanding fees for a position
-    /// @dev Computes fees based on position's target interest and current bucket state
-    /// @param position The position to calculate fees for
-    /// @param bucket The bucket containing the position
-    /// @return The amount of outstanding fees
-    function calculateOutstandingFee(PositionState memory position, BucketState memory bucket)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 outstandingFeesPerShare = position.targetAccumulatedInterestPerBucketShare
-            > bucket.accumulatedInterestPerShare
-            ? position.targetAccumulatedInterestPerBucketShare - bucket.accumulatedInterestPerShare
-            : 0;
-
-        return outstandingFeesPerShare.mulWad(position.debtShares);
     }
 
     /// @notice Calculates total debt for a bucket
@@ -335,8 +307,7 @@ library NectraLib {
                 lastBucketAccumulatedLiquidatedCollateralPerShare: dstBucket.accumulatedLiquidatedCollateralPerShare,
                 lastBucketAccumulatedRedeemedCollateralPerShare: dstBucket.accumulatedRedeemedCollateralPerShare,
                 interestRate: dstBucket.interestRate,
-                bucketEpoch: dstBucket.epoch,
-                targetAccumulatedInterestPerBucketShare: dstBucket.accumulatedInterestPerShare
+                bucketEpoch: dstBucket.epoch
             })
         );
     }
@@ -385,7 +356,6 @@ library NectraLib {
         dest.globalDebtShares = src.globalDebtShares;
         dest.accumulatedLiquidatedCollateralPerShare = src.accumulatedLiquidatedCollateralPerShare;
         dest.accumulatedRedeemedCollateralPerShare = src.accumulatedRedeemedCollateralPerShare;
-        dest.accumulatedInterestPerShare = src.accumulatedInterestPerShare;
         dest.lastGlobalAccumulatedLiquidatedCollateralPerShare = src.lastGlobalAccumulatedLiquidatedCollateralPerShare;
         dest.lastGlobalAccumulatedLiquidatedDebtPerShare = src.lastGlobalAccumulatedLiquidatedDebtPerShare;
         dest.lastUpdateTime = src.lastUpdateTime;
@@ -404,7 +374,6 @@ library NectraLib {
         dest.lastBucketAccumulatedLiquidatedCollateralPerShare = src.lastBucketAccumulatedLiquidatedCollateralPerShare;
         dest.lastBucketAccumulatedRedeemedCollateralPerShare = src.lastBucketAccumulatedRedeemedCollateralPerShare;
         dest.interestRate = src.interestRate;
-        dest.targetAccumulatedInterestPerBucketShare = src.targetAccumulatedInterestPerBucketShare;
     }
 
     /// @notice Copies global state from source to destination

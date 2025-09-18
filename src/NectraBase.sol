@@ -32,7 +32,6 @@ contract NectraBase {
     /// @param globalDebtShares Debt shares this bucket owns in the global state
     /// @param accumulatedLiquidatedCollateralPerShare Accumulated liquidated collateral per share
     /// @param accumulatedRedeemedCollateralPerShare Accumulated redeemed collateral per share
-    /// @param accumulatedInterestPerShare Accumulated interest per share
     /// @param lastGlobalAccumulatedLiquidatedCollateralPerShare Last global liquidated collateral per share
     /// @param lastGlobalAccumulatedLiquidatedDebtPerShare Last global liquidated debt per share
     /// @param lastUpdateTime Timestamp of last bucket update
@@ -42,7 +41,6 @@ contract NectraBase {
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
         uint256 accumulatedRedeemedCollateralPerShare;
-        uint256 accumulatedInterestPerShare;
         uint256 lastGlobalAccumulatedLiquidatedCollateralPerShare;
         uint256 lastGlobalAccumulatedLiquidatedDebtPerShare;
         uint256 lastUpdateTime;
@@ -55,7 +53,6 @@ contract NectraBase {
     /// @param debtShares Number of debt shares for the position in its bucket
     /// @param lastBucketAccumulatedLiquidatedCollateralPerShare Last bucket liquidated collateral per share
     /// @param lastBucketAccumulatedRedeemedCollateralPerShare Last bucket redeemed collateral per share
-    /// @param targetAccumulatedInterestPerBucketShare Target accumulated interest per share
     struct Position {
         uint256 interestRate;
         uint256 bucketEpoch;
@@ -63,13 +60,15 @@ contract NectraBase {
         uint256 debtShares;
         uint256 lastBucketAccumulatedLiquidatedCollateralPerShare;
         uint256 lastBucketAccumulatedRedeemedCollateralPerShare;
-        uint256 targetAccumulatedInterestPerBucketShare;
     }
 
     error InvalidAmount();
     error InsufficientCollateral();
     error FlashMintInProgress();
     error FlashBorrowInProgress();
+    error InterestRateTooHigh(uint256 interestRate, uint256 maximumInterestRate);
+    error InterestRateTooLow(uint256 interestRate, uint256 minimumInterestRate);
+    error InvalidInterestRate();
     error InvalidCollateralPrice();
 
     // Namespaced storage accessors
@@ -87,6 +86,7 @@ contract NectraBase {
     /// @param oracleAddress Address of the price oracle
     /// @param minimumCollateral Minimum amount of collateral required
     /// @param minimumDebt Minimum amount of debt allowed
+    /// @param systemInterestRate System set interest rate
     /// @param maximumInterestRate Maximum allowed interest rate
     /// @param minimumInterestRate Minimum allowed interest rate
     /// @param interestRateIncrement Step size for interest rate changes
@@ -111,6 +111,7 @@ contract NectraBase {
         address oracleAddress;
         uint256 minimumCollateral;
         uint256 minimumDebt;
+        uint256 systemInterestRate;
         uint256 maximumInterestRate;
         uint256 minimumInterestRate;
         uint256 interestRateIncrement;
@@ -142,6 +143,7 @@ contract NectraBase {
         c.MINIMUM_COLLATERAL = args.minimumCollateral;
         c.MINIMUM_BORROW = args.minimumDebt;
 
+        c.SYSTEM_INTEREST_RATE = args.systemInterestRate;
         c.MAXIMUM_INTEREST_RATE = args.maximumInterestRate;
         c.MINIMUM_INTEREST_RATE = args.minimumInterestRate;
         c.INTEREST_RATE_INCREMENT = args.interestRateIncrement;
@@ -211,7 +213,6 @@ contract NectraBase {
             globalDebtShares: bucketStorage.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucketStorage.accumulatedLiquidatedCollateralPerShare,
             accumulatedRedeemedCollateralPerShare: bucketStorage.accumulatedRedeemedCollateralPerShare,
-            accumulatedInterestPerShare: bucketStorage.accumulatedInterestPerShare,
             lastGlobalAccumulatedLiquidatedCollateralPerShare: bucketStorage
                 .lastGlobalAccumulatedLiquidatedCollateralPerShare,
             lastGlobalAccumulatedLiquidatedDebtPerShare: bucketStorage.lastGlobalAccumulatedLiquidatedDebtPerShare,
@@ -280,8 +281,7 @@ contract NectraBase {
                 .lastBucketAccumulatedLiquidatedCollateralPerShare,
             lastBucketAccumulatedRedeemedCollateralPerShare: positionStorage.lastBucketAccumulatedRedeemedCollateralPerShare,
             interestRate: positionStorage.interestRate,
-            bucketEpoch: positionStorage.bucketEpoch,
-            targetAccumulatedInterestPerBucketShare: positionStorage.targetAccumulatedInterestPerBucketShare
+            bucketEpoch: positionStorage.bucketEpoch
         });
 
         NectraLib.GlobalState memory global = _loadGlobalState();
@@ -291,10 +291,10 @@ contract NectraBase {
 
         uint256 currentEpoch = _core()._epochs[position.interestRate];
 
+        // update position if it is in an older bucket epoch
+        // the debt for the position will be 0 since the epoch only increases when a bucket is fully redeemed
         if (position.bucketEpoch < currentEpoch) {
-            uint256 realizedFee = NectraLib.calculateOutstandingFee(position, bucket);
             uint256 collateral = position.collateral;
-            global.fees += realizedFee;
 
             bucket = _loadAndUpdateBucketState(position.interestRate, currentEpoch, global);
 
@@ -305,11 +305,10 @@ contract NectraBase {
                 lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
                 lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
                 interestRate: bucket.interestRate,
-                bucketEpoch: currentEpoch,
-                targetAccumulatedInterestPerBucketShare: bucket.accumulatedInterestPerShare
+                bucketEpoch: currentEpoch
             });
 
-            NectraLib.modifyPosition(position, bucket, global, int256(collateral), int256(realizedFee));
+            NectraLib.modifyPosition(position, bucket, global, int256(collateral), 0);
         }
 
         return (position, bucket, global);
@@ -341,8 +340,7 @@ contract NectraBase {
             collateral: position.collateral,
             debtShares: position.debtShares,
             lastBucketAccumulatedLiquidatedCollateralPerShare: position.lastBucketAccumulatedLiquidatedCollateralPerShare,
-            lastBucketAccumulatedRedeemedCollateralPerShare: position.lastBucketAccumulatedRedeemedCollateralPerShare,
-            targetAccumulatedInterestPerBucketShare: position.targetAccumulatedInterestPerBucketShare
+            lastBucketAccumulatedRedeemedCollateralPerShare: position.lastBucketAccumulatedRedeemedCollateralPerShare
         });
 
         _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]] = NectraCoreStorage.Bucket({
@@ -351,7 +349,6 @@ contract NectraBase {
             globalDebtShares: bucket.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
             accumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            accumulatedInterestPerShare: bucket.accumulatedInterestPerShare,
             lastGlobalAccumulatedLiquidatedCollateralPerShare: bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare,
             lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
             lastUpdateTime: bucket.lastUpdateTime
@@ -387,7 +384,6 @@ contract NectraBase {
             globalDebtShares: bucket.globalDebtShares,
             accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
             accumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            accumulatedInterestPerShare: bucket.accumulatedInterestPerShare,
             lastGlobalAccumulatedLiquidatedCollateralPerShare: bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare,
             lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
             lastUpdateTime: bucket.lastUpdateTime
@@ -422,6 +418,22 @@ contract NectraBase {
     /// @param bitMask The bit mask to store
     function _storeBucketBitMask(uint256 interestRate, uint256 bitMask) internal {
         _core()._bucketBitMasks[_getBucketBitMaskIndex(interestRate)] = bitMask;
+    }
+
+    /// @notice Gets the system set interest rate
+    /// @return The system set interest rate
+    function _systemInterestRate() internal view returns (uint256) {
+        return _systemConfig().SYSTEM_INTEREST_RATE;
+    }
+
+    /// @notice Sets the system set interest rate
+    /// @param systemInterestRate The system set interest rate to set
+    function _setSystemInterestRate(uint256 systemInterestRate) internal {
+        require(systemInterestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InterestRateTooHigh(systemInterestRate, _systemConfig().MAXIMUM_INTEREST_RATE));
+        require(systemInterestRate >= _systemConfig().MINIMUM_INTEREST_RATE, InterestRateTooLow(systemInterestRate, _systemConfig().MINIMUM_INTEREST_RATE));
+        require(systemInterestRate % _systemConfig().INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
+
+        _systemConfig().SYSTEM_INTEREST_RATE = systemInterestRate;
     }
 
     /// @notice Gets the collateral price with circuit breaker check

@@ -34,9 +34,8 @@ contract NectraRedeemBaseTest is NectraBaseTest {
         (collateral[6], debt[6], interestRates[6]) = (100 ether, 15 ether, 0.2 ether);
 
         for (uint256 i = 0; i < interestRates.length; i++) {
-            (tokens[i],,,,) = nectra.modifyPosition{value: collateral[i]}(
-                0, int256(collateral[i]), int256(debt[i]), interestRates[i], ""
-            );
+            nectra.setSystemInterestRate(interestRates[i]);
+            (tokens[i],,,,) = nectra.modifyPosition{value: collateral[i]}(0, int256(collateral[i]), int256(debt[i]), "");
         }
 
         nectraUSD.approve(address(nectra), type(uint256).max);
@@ -71,8 +70,8 @@ contract NectraRedeemBaseTest is NectraBaseTest {
         for (uint256 i = 0; i < tokens.length; i++) {
             nectra.updatePosition(tokens[i]);
             (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokens[i]);
-            assertApproxEqRel(positionCollateral, collateral[i], 1e11);
-            assertApproxEqRel(positionDebt, debt[i], 1e11);
+            assertApproxEqRel(positionCollateral, collateral[i], 1e11, "Incorrect collateral");
+            assertApproxEqRel(positionDebt, debt[i], 1e11, "Incorrect debt");
         }
     }
 

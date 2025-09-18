@@ -7,7 +7,6 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
-import {console2} from "forge-std/console2.sol";
 
 
 /// @title NectraLiquidate
@@ -57,10 +56,6 @@ abstract contract NectraLiquidate is NectraBase {
             NectraLib.BucketState memory bucket,
             NectraLib.GlobalState memory global
         ) = _loadAndUpdateState(tokenId);
-
-        NectraLib.modifyPosition(
-            position, bucket, global, 0, int256(NectraLib.calculateOutstandingFee(position, bucket))
-        );
 
         uint256 positionDebt = NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
         uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
@@ -130,12 +125,7 @@ abstract contract NectraLiquidate is NectraBase {
             NectraLib.GlobalState memory global
         ) = _loadAndUpdateState(tokenId);
 
-        uint256 realizedFee = NectraLib.calculateOutstandingFee(position, bucket);
-        NectraLib.modifyPosition(position, bucket, global, 0, int256(realizedFee));
-        global.fees += realizedFee;
-
         uint256 positionDebt = NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
-
         {
             uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
             uint256 cratio =
@@ -158,12 +148,6 @@ abstract contract NectraLiquidate is NectraBase {
         global.accumulatedLiquidatedCollateralPerShare += liquidatedCollateral.divWad(global.totalDebtShares);
         global.unrealizedLiquidatedDebt += liquidatedDebt + _systemConfig().FULL_LIQUIDATOR_FEE;
 
-        console2.log("\nAfter Position Removed");
-        console2.log("liquidatedCollateral", liquidatedCollateral);
-        console2.log("global.totalDebtShares", global.totalDebtShares);
-        console2.log("collateralPerShare", liquidatedCollateral.divWad(global.totalDebtShares));
-        console2.log("global.accumulatedLiquidatedCollateralPerShare", global.accumulatedLiquidatedCollateralPerShare);
-
         position = NectraLib.PositionState({
             tokenId: tokenId,
             collateral: 0,
@@ -171,8 +155,7 @@ abstract contract NectraLiquidate is NectraBase {
             lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
             lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
             interestRate: position.interestRate,
-            bucketEpoch: position.bucketEpoch,
-            targetAccumulatedInterestPerBucketShare: bucket.accumulatedInterestPerShare
+            bucketEpoch: position.bucketEpoch
         });
 
         _finalize(position, bucket, global);

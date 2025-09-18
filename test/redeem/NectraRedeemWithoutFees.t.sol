@@ -21,7 +21,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             // (100 - 5 / 1.2 * 35 / (10 + 35)); (35 - 5 * 35 / (10 + 35))
             (collateral[1], debt[1]) = (96.75925926 ether, 31.11111111 ether);
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 40 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 40 ether, "incorrect bucket debt");
 
             _validatePositions();
         }
@@ -41,8 +41,8 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             // (C2 - 1 / 1.2); (D2 - 1)
             (collateral[2], debt[2]) = (99.16666667 ether, 4 ether);
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.051 ether), 4 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0] + systemParams.interestRateIncrement), 4 ether, "incorrect bucket debt");
 
             _validatePositions();
         }
@@ -61,9 +61,9 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             // (C4 - 1 / 1.2 * D4 / (D3 + D4)); (D4 - 1 * D4 / (D3 + D4))
             (collateral[4], debt[4]) = (95.37037037 ether, 19.44444444 ether);
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.051 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.1 ether), 35 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0] + systemParams.interestRateIncrement), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[3]), 35 ether, "incorrect bucket debt");
 
             _validatePositions();
         }
@@ -74,26 +74,27 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
 
         nectra.redeem(60 ether, 0 ether);
 
-        assertApproxEqRel(nectraExternal.getBucketDebt(0.05 ether), 0 ether, 1e11);
+        assertApproxEqRel(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1e11);
 
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, 0.05 ether, "");
+        nectra.setSystemInterestRate(0.05 ether);
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, "");
 
         assertApproxEqRel(nectraExternal.getPositionDebt(tokenId), 10 ether, 1e11);
-        assertApproxEqRel(nectraExternal.getBucketDebt(0.05 ether), 10 ether, 1e11);
+        assertApproxEqRel(nectraExternal.getBucketDebt(interestRates[0]), 10 ether, 1e11);
 
         nectra.redeem(10 ether, 0 ether);
 
-        assertApproxEqAbs(nectraExternal.getBucketDebt(0.05 ether), 0 ether, 1);
+        assertApproxEqAbs(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1);
         assertApproxEqRel(nectraExternal.getPositionDebt(tokenId), 0 ether, 1e11);
     }
 
     function test_redeem_withdraw_collateral() public {
         nectra.redeem(65 ether, 0 ether);
 
-        assertApproxEqAbs(nectraExternal.getBucketDebt(0.05 ether), 0 ether, 1);
+        assertApproxEqAbs(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1);
 
-        (, int256 _collateral, int256 _debt,,) =
-            nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, 0.05 ether, "");
+        nectra.setSystemInterestRate(interestRates[0]);
+        (, int256 _collateral, int256 _debt,,) = nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
 
         assertApproxEqRel(_collateral, -70.833333333333333 ether, 1e11); // 100 - 35 / 1.2
         assertApproxEqAbs(_debt, 0 ether, 1);
@@ -127,9 +128,9 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         }
 
         // Verify all bucket debts are 0
-        assertEq(nectraExternal.getBucketDebt(0.05 ether), 0, "5% bucket should be empty");
-        assertEq(nectraExternal.getBucketDebt(0.1 ether), 0, "10% bucket should be empty");
-        assertEq(nectraExternal.getBucketDebt(0.2 ether), 1, "20% bucket should be empty minus rounding");
+        assertEq(nectraExternal.getBucketDebt(interestRates[0]), 0, "5% bucket should be empty");
+        assertEq(nectraExternal.getBucketDebt(interestRates[3]), 0, "10% bucket should be empty");
+        assertEq(nectraExternal.getBucketDebt(interestRates[5]), 1, "20% bucket should be empty minus rounding");
 
         // Verify nUSD was burned
         uint256 finalNUSDBalance = nectraUSD.balanceOf(address(this));
@@ -145,7 +146,8 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             (uint256 currentCollateral, uint256 currentDebt,) = nectraExternal.getPosition(tokens[i]);
 
             // Claim remaining collateral
-            nectra.modifyPosition(tokens[i], type(int256).min, type(int256).min, interestRates[i], "");
+            nectra.setSystemInterestRate(interestRates[i]);
+            nectra.modifyPosition(tokens[i], type(int256).min, type(int256).min, "");
 
             uint256 balanceAfterClaim = address(this).balance;
             uint256 collateralClaimed = balanceAfterClaim - balanceBeforeClaim;
@@ -160,13 +162,15 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         }
 
         // Due to 1 wei of rounding the last two positions will have some debt left
-        nectra.modifyPosition(tokens[5], type(int256).min, type(int256).min, interestRates[5], "");
+        nectra.setSystemInterestRate(interestRates[5]);
+        nectra.modifyPosition(tokens[5], type(int256).min, type(int256).min, "");
         (uint256 finalCollateral1, uint256 finalDebt1,) = nectraExternal.getPosition(tokens[5]);
         assertEq(finalCollateral1, 0, "Position should have no remaining collateral");
         assertEq(finalDebt1, 0, "Position should have no remaining debt");
 
         // TODO: Last position cant fully withdraw due to rounding losses on collateral
-        nectra.modifyPosition(tokens[6], type(int256).min, type(int256).min, interestRates[6], "");
+        nectra.setSystemInterestRate(interestRates[6]);
+        nectra.modifyPosition(tokens[6], type(int256).min, type(int256).min, "");
         (uint256 finalCollateral2, uint256 finalDebt2,) = nectraExternal.getPosition(tokens[6]);
         assertEq(finalCollateral2, 0, "Position should have no remaining collateral");
         assertEq(finalDebt2, 0, "Position should have no remaining debt");

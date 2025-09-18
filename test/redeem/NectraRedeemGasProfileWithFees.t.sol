@@ -16,18 +16,17 @@ contract NectraRedeemGasProfileWithFeesTest is NectraBaseTest {
         super.setUp();
 
         for (uint256 i = 0; i < 100; i++) {
-            nectra.modifyPosition{value: 10 ether}(
-                0, 10 ether, 1 ether, systemParams.minimumInterestRate + i * systemParams.interestRateIncrement, ""
-            );
+            nectra.setSystemInterestRate(systemParams.minimumInterestRate + i * systemParams.interestRateIncrement);
+            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 
         for (uint256 i = 0; i < 100; i++) {
-            nectra.modifyPosition{value: 10 ether}(
-                0, 10 ether, 1 ether, systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement, ""
-            );
+            nectra.setSystemInterestRate(systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement);
+            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, systemParams.maximumInterestRate, "");
+        nectra.setSystemInterestRate(systemParams.maximumInterestRate);
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
     }
 
     function test_gas_profile_redeem() public {

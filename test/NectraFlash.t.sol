@@ -42,11 +42,11 @@ contract NectraFlashTest is NectraBaseTest {
         // systemParams.feeRecipientAddress = makeAddr("feeRecipient");
         super.setUp();
 
+        nectra.setSystemInterestRate(interestRate);
+
         // Get some nUSD for flash fees and give nectra some cBTC to loan out
         int256 debtBeforeFee = int256(positionDebt * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt before fee
-        (tokenId,,,,) = nectra.modifyPosition{value: positionCollateral}(
-            0, int256(positionCollateral), debtBeforeFee, interestRate, ""
-        );
+        (tokenId,,,,) = nectra.modifyPosition{value: positionCollateral}(0, int256(positionCollateral), debtBeforeFee, "");
         uint256 expectedDebt = uint256(debtBeforeFee) + (uint256(debtBeforeFee) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(tokenId, positionCollateral, expectedDebt, interestRate);
         // Updated positionDebt to be exact amount in the position
@@ -150,7 +150,7 @@ contract NectraFlashTest is NectraBaseTest {
     function test_flashMintCanRepayDebt() public {
         uint256 debtDiff = positionDebt / 10;
         callbackParams.debtDelta = -int256(debtDiff);
-        (, int256 expectedDebtDiff,,) = nectra.quoteModifyPosition(tokenId, 0, callbackParams.debtDelta, interestRate);
+        (, int256 expectedDebtDiff,,) = nectra.quoteModifyPosition(tokenId, 0, callbackParams.debtDelta);
         callbackParams.borrowAmount = uint256(-expectedDebtDiff);
         callbackParams.addUSD = uint256(-expectedDebtDiff);
         bytes memory systemParams = abi.encode(callbackParams);
@@ -289,7 +289,7 @@ contract NectraFlashTest is NectraBaseTest {
         callbackParams.debtDelta =
             int256((newPositionDebt - positionDebt) * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt delta before fee
         vm.expectRevert(NectraBase.InsufficientCollateral.selector);
-        nectra.quoteModifyPosition(tokenId, callbackParams.collateralDelta, callbackParams.debtDelta, interestRate);
+        nectra.quoteModifyPosition(tokenId, callbackParams.collateralDelta, callbackParams.debtDelta);
 
         // We should be able to borrow the max amount of debt allowed by the current system collateral balance
         newPositionDebt = callbackParams.borrowAmount * price / systemParams.issuanceRatio;
@@ -507,7 +507,7 @@ contract NectraFlashTest is NectraBaseTest {
         // Create new position with borrowed amounts and passed debt value
         int256 debtDiff;
         (tokenId,, debtDiff,,) = nectra.modifyPosition{value: uint256(systemParams.collateralDelta)}(
-            0, systemParams.collateralDelta, systemParams.debtDelta, interestRate, ""
+            0, systemParams.collateralDelta, systemParams.debtDelta, ""
         );
 
         // Swap the received nUSD for cBTC
@@ -537,9 +537,9 @@ contract NectraFlashTest is NectraBaseTest {
                 if (addBTC > borrowedBTC) {
                     revert("Cannot add more collateral than borrowed amount");
                 }
-                nectra.modifyPosition{value: addBTC}(tokenId, collateralDelta, debtDelta, interestRate, "");
+                nectra.modifyPosition{value: addBTC}(tokenId, collateralDelta, debtDelta, "");
             } else {
-                nectra.modifyPosition(tokenId, collateralDelta, debtDelta, interestRate, "");
+                nectra.modifyPosition(tokenId, collateralDelta, debtDelta, "");
             }
         }
     }

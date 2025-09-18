@@ -21,7 +21,6 @@ library NectraCoreStorage {
         uint256 globalDebtShares;
         uint256 accumulatedLiquidatedCollateralPerShare;
         uint256 accumulatedRedeemedCollateralPerShare;
-        uint256 accumulatedInterestPerShare;
         uint256 lastGlobalAccumulatedLiquidatedCollateralPerShare;
         uint256 lastGlobalAccumulatedLiquidatedDebtPerShare;
         uint256 lastUpdateTime;
@@ -34,7 +33,6 @@ library NectraCoreStorage {
         uint256 debtShares;
         uint256 lastBucketAccumulatedLiquidatedCollateralPerShare;
         uint256 lastBucketAccumulatedRedeemedCollateralPerShare;
-        uint256 targetAccumulatedInterestPerBucketShare;
     }
 
     struct Layout {

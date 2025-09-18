@@ -20,7 +20,6 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
         uint256[] memory positionDebtBefore = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             (positionCollateralBefore[i], positionDebtBefore[i],) = nectraExternal.getPosition(tokens[i]);
-            positionDebtBefore[i] -= nectraExternal.getPositionOutstandingFee(tokens[i]);
         }
 
         // Perform a redemption

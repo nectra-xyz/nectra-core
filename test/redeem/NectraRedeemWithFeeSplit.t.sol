@@ -23,9 +23,9 @@ contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
             (collateral[0], debt[0]) = (99.07592592592593 ether, 8.888888889 ether); // (C0 - 5 / 1.2 * 0.998 * D0 / (D0 + D1)); (D0 - 5 * D0 / (D0 + D1))
             (collateral[1], debt[1]) = (96.76574074074074 ether, 31.11111111 ether); // (C1 - 5 / 1.2  * 0.998 * D1 / (D0 + D1)); (D1 - 5 * D1 / (D0 + D1))
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 40 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.051 ether), 5 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.1 ether), 45 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 40 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0] + systemParams.interestRateIncrement), 5 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[3]), 45 ether, "incorrect bucket debt");
 
             _validatePositions();
         }
@@ -36,9 +36,9 @@ contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
             (collateral[1], debt[1]) = (70.89166666694388 ether, 0 ether); // (C1 - 40 / 1.2  * 0.998 * D1 / (D0 + D1)); 0
             (collateral[2], debt[2]) = (99.16833333333334 ether, 4 ether); // (C2 - 1 / 1.2  * 0.998); (D2 - 1)
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.051 ether), 4 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.1 ether), 45 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0] + systemParams.interestRateIncrement), 4 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[3]), 45 ether, "incorrect bucket debt");
 
             _validatePositions();
         }
@@ -49,9 +49,9 @@ contract NectraRedeemWithFeeSplitTest is NectraRedeemBaseTest {
             (collateral[3], debt[3]) = (96.3037037037037 ether, 15.55555556 ether); // (C3 - 10 / 1.2  * 0.998 * D3 / (D3 + D4)); (D3 - 10 * D3 / (D3 + D4))
             (collateral[4], debt[4]) = (95.37962962962963 ether, 19.44444444 ether); // (C4 - 10 / 1.2  * 0.998 * D4 / (D3 + D4)); (D3 - 10 * D4 / (D3 + D4))
 
-            assertEq(nectraExternal.getBucketDebt(0.05 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.051 ether), 0 ether, "incorrect bucket debt");
-            assertEq(nectraExternal.getBucketDebt(0.1 ether), 35 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[0] + systemParams.interestRateIncrement), 0 ether, "incorrect bucket debt");
+            assertEq(nectraExternal.getBucketDebt(interestRates[3]), 35 ether, "incorrect bucket debt");
 
             _validatePositions();
         }

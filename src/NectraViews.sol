@@ -61,6 +61,7 @@ abstract contract NectraViews is NectraBase {
             feeRecipientAddress: c.FEE_RECIPIENT_ADDRESS,
             minimumCollateral: c.MINIMUM_COLLATERAL,
             minimumDebt: c.MINIMUM_BORROW,
+            systemInterestRate: c.SYSTEM_INTEREST_RATE,
             maximumInterestRate: c.MAXIMUM_INTEREST_RATE,
             minimumInterestRate: c.MINIMUM_INTEREST_RATE,
             interestRateIncrement: c.INTEREST_RATE_INCREMENT,

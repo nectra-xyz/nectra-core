@@ -46,7 +46,7 @@ interface INectra {
     );
     event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
 
-    function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay, uint256 interestRate)
+    function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay)
         external
         view
         returns (int256, int256);
@@ -54,7 +54,6 @@ interface INectra {
         uint256 tokenId,
         int256 depositOrWithdraw,
         int256 borrowOrRepay,
-        uint256 interestRate,
         bytes memory permit
     ) external payable returns (uint256, int256, int256, uint256, uint256);
 

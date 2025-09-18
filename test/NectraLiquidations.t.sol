@@ -19,16 +19,16 @@ contract NectraLiquidationsTest is NectraBaseTest {
         uint256 tokenId;
         // Open positions with different interest rates
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 85 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 85 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
         tokens.push(tokenId);
     }
 

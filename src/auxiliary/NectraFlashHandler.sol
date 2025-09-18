@@ -97,7 +97,6 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @notice Create or increase the exposure of a leveraged position
     /// @param tokenId The position to modify
     /// @param desiredCollateral The desired final collateral in the position
-    /// @param desiredInterestRate The desired interest rate
     /// @param maxDebt The maximum debt allowed in the position
     /// @param recipient The address to receive the position NFT when creating a new position
     /// @return tokenId The token ID of the position
@@ -105,7 +104,6 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     function increasePositionExposure(
         uint256 tokenId,
         uint256 desiredCollateral,
-        uint256 desiredInterestRate,
         uint256 maxDebt,
         address recipient
     ) external payable returns (uint256) {
@@ -117,12 +115,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             uint256 permissionBitmask = 1 << uint256(INectraNFT.Permission.Deposit);
             permissionBitmask |= 1 << uint256(INectraNFT.Permission.Borrow);
 
-            uint256 positionInterestRate;
-            (existingPositionCollateral,, positionInterestRate) = nectraExternal.getPosition(tokenId);
-
-            if (positionInterestRate != desiredInterestRate) {
-                permissionBitmask |= 1 << uint256(INectraNFT.Permission.AdjustInterest);
-            }
+            (existingPositionCollateral,,) = nectraExternal.getPosition(tokenId);
 
             _requireCallerAuthorized(tokenId, msg.sender, permissionBitmask);
         }
@@ -138,7 +131,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             IssuanceRatioExceeded(minTargetCratio, nectraExternal.ISSUANCE_RATIO())
         );
 
-        bytes memory params = abi.encode(tokenId, desiredCollateral, desiredInterestRate, maxDebt);
+        bytes memory params = abi.encode(tokenId, desiredCollateral, maxDebt);
         uint256 collateralToBorrow = desiredCollateral - msg.value - existingPositionCollateral;
 
         nectra.flashBorrow(address(this), collateralToBorrow, params);
@@ -167,14 +160,13 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
         permissionBitmask |= 1 << uint256(INectraNFT.Permission.Withdraw);
         _requireCallerAuthorized(tokenId, msg.sender, permissionBitmask);
 
-        (uint256 positionCollateral, uint256 positionDebt, uint256 positionInterestRate) =
-            nectraExternal.getPosition(tokenId);
+        (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokenId);
 
         require(positionDebt > 0, InvalidAmount(positionDebt, 0));
         require(positionCollateral > 0, InvalidAmount(positionCollateral, 0));
 
         // Encode parameters for the callback
-        bytes memory params = abi.encode(tokenId, positionDebt, positionCollateral, positionInterestRate);
+        bytes memory params = abi.encode(tokenId, positionDebt, positionCollateral);
 
         // Initiate flash mint
         nectra.flashMint(address(this), positionDebt, params);
@@ -237,8 +229,8 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param params The parameters for the flash borrow
     function _increasePositionExposure(uint256 amount, uint256 premium, bytes calldata params) internal {
         // Get params
-        (uint256 tokenId, uint256 desiredCollateral, uint256 desiredInterestRate, uint256 maxDebt) =
-            abi.decode(params, (uint256, uint256, uint256, uint256));
+        (uint256 tokenId, uint256 desiredCollateral, uint256 maxDebt) =
+            abi.decode(params, (uint256, uint256, uint256));
 
         uint256 swapAmountOut = amount + premium;
         // Slippage for the swap is not important because we limit the cost to maxDebt
@@ -253,9 +245,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             require(expectedDebt <= maxDebt, MaxDebtExceeded(expectedDebt, maxDebt));
 
             // Open position
-            nectra.modifyPosition{value: desiredCollateral}(
-                0, int256(desiredCollateral), int256(swapAmountIn), desiredInterestRate, ""
-            );
+            nectra.modifyPosition{value: desiredCollateral}(0, int256(desiredCollateral), int256(swapAmountIn), "");
         } else {
             // Check new position will not exceed maxDebt
             uint256 currentDebt = nectraExternal.getPositionDebt(tokenId);
@@ -267,9 +257,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             require(collateralToSend <= address(this).balance, InvalidAmount(collateralToSend, address(this).balance));
 
             // Modify position
-            nectra.modifyPosition{value: collateralToSend}(
-                tokenId, int256(collateralToSend), int256(swapAmountIn), desiredInterestRate, ""
-            );
+            nectra.modifyPosition{value: collateralToSend}(tokenId, int256(collateralToSend), int256(swapAmountIn), "");
         }
 
         // Sell nUSD for cBTC
@@ -287,8 +275,8 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param params The parameters for the flash borrow
     function _flashClosePosition(uint256 amount, uint256 premium, bytes calldata params) internal {
         // Get params
-        (uint256 tokenId, uint256 positionDebt, uint256 positionCollateral, uint256 interestRate) =
-            abi.decode(params, (uint256, uint256, uint256, uint256));
+        (uint256 tokenId, uint256 positionDebt, uint256 positionCollateral) =
+            abi.decode(params, (uint256, uint256, uint256));
 
         require(amount == positionDebt, InvalidAmount(amount, positionDebt));
 
@@ -302,7 +290,6 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
             tokenId,
             type(int256).min, // Withdraw all collateral
             type(int256).min, // Repay all debt
-            interestRate, // Interest rate doesn't matter when closing
             "" // No permit needed
         );
 

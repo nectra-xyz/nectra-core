@@ -24,33 +24,33 @@ contract NectraModifyPositionTest is NectraBaseTest {
     function setUp() public virtual override {
         super.setUp();
 
+        defaultInterestRate = nectra.getSystemInterestRate();
+
         // Create default position to test permission requirements
-        (defaultTokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, ""
-        );
+        (defaultTokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
     }
 
     // Basic Requirements
     function test_should_fail_for_invalid_tokenId() public {
         vm.expectRevert(IERC721.TokenDoesNotExist.selector);
-        nectra.modifyPosition(1337, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, "");
+        nectra.modifyPosition(1337, int256(defaultCollateral), int256(defaultDebt), "");
     }
 
     function test_should_fail_for_invalid_low_interest_rate() public {
         vm.expectRevert(abi.encodeWithSelector(INectra.InterestRateTooLow.selector, 0 ether, systemParams.minimumInterestRate));
-        nectra.modifyPosition(0, int256(defaultCollateral), int256(defaultDebt), 0 ether, "");
+        nectra.setSystemInterestRate(0 ether);
     }
 
     function test_should_fail_for_invalid_high_interest_rate() public {
         vm.expectRevert(
             abi.encodeWithSelector(INectra.InterestRateTooHigh.selector, 101 ether, systemParams.maximumInterestRate)
         );
-        nectra.modifyPosition(0, int256(defaultCollateral), int256(defaultDebt), 101 ether, "");
+        nectra.setSystemInterestRate(101 ether);
     }
 
     function test_should_fail_for_invalid_interest_rate_increment() public {
         vm.expectRevert(INectra.InvalidInterestRate.selector);
-        nectra.modifyPosition(0, int256(defaultCollateral), int256(defaultDebt), 0.051234 ether, "");
+        nectra.setSystemInterestRate(0.051234 ether);
     }
 
     function test_should_fail_for_below_minimum_deposit() public {
@@ -58,9 +58,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(INectra.MinimumDepositNotMet.selector, belowMinimumDeposit, systemParams.minimumCollateral)
         );
-        nectra.modifyPosition{value: belowMinimumDeposit}(
-            0, int256(belowMinimumDeposit), int256(defaultDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition{value: belowMinimumDeposit}(0, int256(belowMinimumDeposit), int256(defaultDebt), "");
     }
 
     function test_should_fail_for_below_minimum_debt() public {
@@ -70,9 +68,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(INectra.MinimumDebtNotMet.selector, systemParams.minimumDebt - 1, systemParams.minimumDebt)
         );
-        nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(belowMinimumDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(belowMinimumDebt), "");
     }
 
     function test_should_fail_when_close_but_not_withdraw() public {
@@ -80,7 +76,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         nectraUSD.approve(address(nectra), debt);
         // attempt to repay all debt but not withdraw collateral
         vm.expectRevert(abi.encodeWithSelector(INectra.MinimumDebtNotMet.selector, 0, systemParams.minimumDebt));
-        nectra.modifyPosition(defaultTokenId, 0, -int256(debt), defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -int256(debt), "");
         // confirm that collateral and debt are unchanged
         _checkPosition(defaultTokenId, collateral, debt, defaultInterestRate);
     }
@@ -90,13 +86,11 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         // open new position with excessive debt
         vm.expectRevert(INectra.InsufficientCollateral.selector);
-        nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), excessiveDebt, defaultInterestRate, ""
-        );
+        nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), excessiveDebt, "");
 
         // modify existing position with excessive debt
         vm.expectRevert(INectra.InsufficientCollateral.selector);
-        nectra.modifyPosition(defaultTokenId, 0, excessiveDebt, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, excessiveDebt, "");
     }
 
     // Permission Requirements
@@ -104,12 +98,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         vm.startPrank(notOwner);
         vm.expectRevert(INectra.NotOwnerNorApproved.selector);
         // attempt to increase debt
-        nectra.modifyPosition(
-            defaultTokenId, int256(defaultCollateral), int256(defaultDebt + 1 ether), defaultInterestRate, ""
-        );
+        nectra.modifyPosition(defaultTokenId, int256(defaultCollateral), int256(defaultDebt + 1 ether), "");
+
         // confirm that debt was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt, defaultInterestRate);
         vm.stopPrank();
     }
 
@@ -117,10 +109,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 initialNUSDBalance = nectraUSD.balanceOf(address(this));
 
         // position owner can increase debt
-        nectra.modifyPosition(defaultTokenId, 0, 1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, 1 ether, "");
 
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + UNIT + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + UNIT, defaultInterestRate);
         // position owner should have received the borrowed NUSD
         assertEq(
             nectraUSD.balanceOf(address(this)),
@@ -134,10 +125,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         vm.prank(notOwner);
         // notOwner can increase debt
-        nectra.modifyPosition(defaultTokenId, 0, 1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, 1 ether, "");
 
-        closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + 2 ether + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + 2 ether, defaultInterestRate);
         // owner should remain unchanged
         assertEq(
             nectraUSD.balanceOf(address(this)),
@@ -160,21 +150,19 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         vm.expectRevert(INectra.NotOwnerNorApproved.selector);
         // attempt to decrease debt
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
+
         // confirm that debt was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt, defaultInterestRate);
         vm.stopPrank();
     }
 
     function test_should_pass_when_caller_is_owner_or_approved_to_repay() public {
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-
         // position owner can decrease debt
         nectraUSD.approve(address(nectra), UNIT);
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT, defaultInterestRate);
 
         // authorize notOwner to repay
         nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.Repay);
@@ -184,12 +172,12 @@ contract NectraModifyPositionTest is NectraBaseTest {
         nectraUSD.approve(address(nectra), UNIT);
 
         // notOwner can decrease debt
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
         // Note: during repayment, a portion of the closing fee is realized and added to the debt
         // the remainder is returned by calculateOutstandingFee. The sum of the realized amount and the remainder
         // equals the initial closing fee.
-        uint256 expectedDebt = defaultDebt + closingFee - 2 * UNIT;
+        uint256 expectedDebt = defaultDebt - 2 * UNIT;
         _checkPosition(defaultTokenId, defaultCollateral, expectedDebt, defaultInterestRate);
         vm.stopPrank();
     }
@@ -200,19 +188,17 @@ contract NectraModifyPositionTest is NectraBaseTest {
         vm.startPrank(notOwner);
         vm.expectRevert(INectra.NotOwnerNorApproved.selector);
         // attempt to increase collateral
-        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, "");
         // confirm that collateral was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt, defaultInterestRate);
         vm.stopPrank();
     }
 
     function test_should_pass_when_caller_is_owner_or_approved_to_deposit() public {
         // position owner can increase collateral
-        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, "");
 
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral + UNIT, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral + UNIT, defaultDebt, defaultInterestRate);
 
         // authorize notOwner to deposit
         nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.Deposit);
@@ -220,10 +206,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         vm.prank(notOwner);
         // notOwner can increase collateral
-        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition{value: UNIT}(defaultTokenId, 1 ether, 0, "");
 
-        closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral + 2 * UNIT, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral + 2 * UNIT, defaultDebt, defaultInterestRate);
     }
 
     function test_should_fail_when_caller_is_not_owner_or_approved_to_withdraw() public {
@@ -232,10 +217,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
         vm.startPrank(notOwner);
         vm.expectRevert(INectra.NotOwnerNorApproved.selector);
         // attempt to withdraw collateral
-        nectra.modifyPosition(defaultTokenId, -1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -1 ether, 0, "");
         // confirm that collateral was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt, defaultInterestRate);
         vm.stopPrank();
     }
 
@@ -243,10 +227,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 initialBalance = address(this).balance;
 
         // position owner can withdraw collateral
-        nectra.modifyPosition(defaultTokenId, -1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -1 ether, 0, "");
 
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral - UNIT, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral - UNIT, defaultDebt, defaultInterestRate);
         // position owner should have received the collateral
         assertEq(address(this).balance, initialBalance + UNIT, "Position owner should have received collateral");
 
@@ -257,10 +240,9 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         vm.prank(notOwner);
         // notOwner can withdraw collateral
-        nectra.modifyPosition(defaultTokenId, -1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -1 ether, 0, "");
 
-        closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral - 2 * UNIT, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral - 2 * UNIT, defaultDebt, defaultInterestRate);
 
         // position owner should remain unchanged
         assertEq(address(this).balance, initialBalance + UNIT, "Position owner should have received collateral");
@@ -268,112 +250,112 @@ contract NectraModifyPositionTest is NectraBaseTest {
         assertEq(address(notOwner).balance, notOwnerBalanceBefore + UNIT, "Not owner should have received collateral");
     }
 
-    function test_should_fail_when_caller_is_not_owner_or_approved_to_increase_interest_rate() public {
-        deal(address(nectraUSD), notOwner, UNIT);
+    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
+    // function test_should_fail_when_caller_is_not_owner_or_approved_to_increase_interest_rate() public {
+    //     deal(address(nectraUSD), notOwner, UNIT);
 
-        vm.startPrank(notOwner);
-        nectraUSD.approve(address(nectra), UNIT);
+    //     vm.startPrank(notOwner);
+    //     nectraUSD.approve(address(nectra), UNIT);
 
-        vm.expectRevert(INectra.NotOwnerNorApproved.selector);
-        // attempt to increase interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
-        // confirm that interest rate was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
-        vm.stopPrank();
-    }
+    //     vm.expectRevert(INectra.NotOwnerNorApproved.selector);
+    //     // attempt to increase interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
+    //     // confirm that interest rate was not changed
+    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    //     _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+    //     vm.stopPrank();
+    // }
 
-    function test_should_pass_when_caller_is_owner_or_approved_to_increase_interest_rate() public {
-        // position owner can increase interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
+    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
+    // function test_should_pass_when_caller_is_owner_or_approved_to_increase_interest_rate() public {
+    //     // position owner can increase interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
 
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(
-            defaultTokenId,
-            defaultCollateral,
-            defaultDebt + closingFee,
-            defaultInterestRate + systemParams.interestRateIncrement
-        );
+    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    //     _checkPosition(
+    //         defaultTokenId,
+    //         defaultCollateral,
+    //         defaultDebt + closingFee,
+    //         defaultInterestRate + systemParams.interestRateIncrement
+    //     );
 
-        // authorize notOwner to increase interest rate
-        nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
+    //     // authorize notOwner to increase interest rate
+    //     nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
 
-        vm.startPrank(notOwner);
-        // notOwner can increase interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + 2 * systemParams.interestRateIncrement, "");
+    //     vm.startPrank(notOwner);
+    //     // notOwner can increase interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + 2 * systemParams.interestRateIncrement, "");
 
-        closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    //     closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
-        _checkPosition(
-            defaultTokenId,
-            defaultCollateral,
-            defaultDebt + closingFee,
-            defaultInterestRate + 2 * systemParams.interestRateIncrement
-        );
-        vm.stopPrank();
-    }
+    //     _checkPosition(
+    //         defaultTokenId,
+    //         defaultCollateral,
+    //         defaultDebt + closingFee,
+    //         defaultInterestRate + 2 * systemParams.interestRateIncrement
+    //     );
+    //     vm.stopPrank();
+    // }
 
-    function test_should_fail_when_caller_is_not_owner_or_approved_to_decrease_interest_rate() public {
-        vm.startPrank(notOwner);
-        vm.expectRevert(INectra.NotOwnerNorApproved.selector);
-        // attempt to decrease interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
-        // confirm that interest rate was not changed
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
-        vm.stopPrank();
-    }
+    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
+    // function test_should_fail_when_caller_is_not_owner_or_approved_to_decrease_interest_rate() public {
+    //     vm.startPrank(notOwner);
+    //     vm.expectRevert(INectra.NotOwnerNorApproved.selector);
+    //     // attempt to decrease interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
+    //     // confirm that interest rate was not changed
+    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    //     _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+    //     vm.stopPrank();
+    // }
 
-    function test_should_pass_when_caller_is_owner_or_approved_to_decrease_interest_rate() public {
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
+    // function test_should_pass_when_caller_is_owner_or_approved_to_decrease_interest_rate() public {
+    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
-        // position owner can decrease interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
+    //     // position owner can decrease interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
 
-        _checkPosition(
-            defaultTokenId,
-            defaultCollateral,
-            defaultDebt + closingFee,
-            defaultInterestRate - systemParams.interestRateIncrement
-        );
+    //     _checkPosition(
+    //         defaultTokenId,
+    //         defaultCollateral,
+    //         defaultDebt + closingFee,
+    //         defaultInterestRate - systemParams.interestRateIncrement
+    //     );
 
-        // authorize notOwner to increase interest rate
-        nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
+    //     // authorize notOwner to increase interest rate
+    //     nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
 
-        vm.startPrank(notOwner);
-        // Should realize a new closing fee when decreasing interest rate further
-        closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+    //     vm.startPrank(notOwner);
+    //     // Should realize a new closing fee when decreasing interest rate further
+    //     closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
-        // notOwner can decrease interest rate
-        nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - 2 * systemParams.interestRateIncrement, "");
+    //     // notOwner can decrease interest rate
+    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - 2 * systemParams.interestRateIncrement, "");
 
-        _checkPosition(
-            defaultTokenId,
-            defaultCollateral,
-            defaultDebt + closingFee,
-            defaultInterestRate - 2 * systemParams.interestRateIncrement
-        );
-        vm.stopPrank();
-    }
+    //     _checkPosition(
+    //         defaultTokenId,
+    //         defaultCollateral,
+    //         defaultDebt + closingFee,
+    //         defaultInterestRate - 2 * systemParams.interestRateIncrement
+    //     );
+    //     vm.stopPrank();
+    // }
 
     // Collateral Mismatch
     function test_should_fail_when_opening_position_with_collateral_mismatch_no_payment() public {
         vm.expectRevert(INectra.CollateralMismatch.selector);
-        nectra.modifyPosition{value: 0 ether}(0, 1 ether, 0.5 ether, defaultInterestRate, "");
+        nectra.modifyPosition{value: 0 ether}(0, 1 ether, 0.5 ether, "");
     }
 
     function test_should_fail_when_opening_position_with_collateral_mismatch_under_paid() public {
         vm.expectRevert(INectra.CollateralMismatch.selector);
-        nectra.modifyPosition{value: defaultCollateral - 1}(
-            0, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition{value: defaultCollateral - 1}(0, int256(defaultCollateral), int256(defaultDebt), "");
     }
 
     function test_should_fail_when_opening_position_with_collateral_mismatch_over_paid() public {
         vm.expectRevert(INectra.CollateralMismatch.selector);
-        nectra.modifyPosition{value: defaultCollateral + 1}(
-            0, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition{value: defaultCollateral + 1}(0, int256(defaultCollateral), int256(defaultDebt), "");
     }
 
     // Debt Allowance
@@ -381,35 +363,33 @@ contract NectraModifyPositionTest is NectraBaseTest {
         nectraUSD.approve(address(nectra), 0);
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        nectra.modifyPosition(defaultTokenId, 0, -1, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1, "");
     }
 
     function test_should_fail_when_repaying_position_debt_with_insufficient_allowance() public {
-        (, int256 debtDiff,,) = nectra.quoteModifyPosition(defaultTokenId, 0, -2, defaultInterestRate);
+        (, int256 debtDiff,,) = nectra.quoteModifyPosition(defaultTokenId, 0, -2);
 
         nectraUSD.approve(address(nectra), uint256(-debtDiff) - 1);
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        nectra.modifyPosition(defaultTokenId, 0, -2, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -2, "");
     }
 
     function test_should_succeed_when_repaying_position_debt_with_correct_allowance() public {
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
         nectraUSD.approve(address(nectra), UNIT);
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT, defaultInterestRate);
         assertEq(nectraUSD.allowance(address(this), address(nectra)), 0, "Allowance not spent");
     }
 
     function test_should_succeed_when_repaying_position_debt_with_extra_allowance() public {
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
         uint256 extraAllowance = 10 ether;
 
         nectraUSD.approve(address(nectra), UNIT + extraAllowance);
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT, defaultInterestRate);
         assertEq(nectraUSD.allowance(address(this), address(nectra)), extraAllowance, "Allowance not spent");
     }
 
@@ -429,13 +409,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
 
         // create new position in 5% bucket with default position
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm accumulated liquidation collateral and debt are not socialized to new position
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
     }
 
     function test_should_not_socialize_to_new_position_in_new_bucket() public {
@@ -452,14 +429,16 @@ contract NectraModifyPositionTest is NectraBaseTest {
             globalState.accumulatedLiquidatedDebtPerShare
         );
 
-        // create new position in 0.5% bucket with default position
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        uint256 newInterestRate = 0.005 ether;
+
+        // change system IR to 0.5% bucket
+        nectra.setSystemInterestRate(newInterestRate);
+
+        // create new position in system IR bucket with default position
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm accumulated liquidation collateral and debt are not socialized to new position
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, newInterestRate);
     }
 
     function test_should_socialize_to_existing_position_before_depositing() public {
@@ -478,10 +457,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
 
         // modify default position
-        nectra.modifyPosition{value: 1 ether}(defaultTokenId, 1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition{value: 1 ether}(defaultTokenId, 1 ether, 0, "");
 
         // confirm accumulated liquidation collateral and debt are not socialized to new position
-        uint256 expectedDebt = defaultDebt + socializedDebt + nectraExternal.getPositionOutstandingFee(defaultTokenId);
+        uint256 expectedDebt = defaultDebt + socializedDebt;
         _checkPosition(
             defaultTokenId, defaultCollateral + socializedCollateral + UNIT, expectedDebt, defaultInterestRate
         );
@@ -503,10 +482,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
 
         // modify default position
-        nectra.modifyPosition(defaultTokenId, -1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -1 ether, 0, "");
 
         // confirm accumulated liquidation collateral and debt are not socialized to new position
-        uint256 expectedDebt = defaultDebt + socializedDebt + nectraExternal.getPositionOutstandingFee(defaultTokenId);
+        uint256 expectedDebt = defaultDebt + socializedDebt;
         _checkPosition(
             defaultTokenId, defaultCollateral + socializedCollateral - UNIT, expectedDebt, defaultInterestRate
         );
@@ -528,11 +507,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
 
         // modify default position
-        nectra.modifyPosition(defaultTokenId, 0, 1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, 1 ether, "");
 
         // confirm accumulated liquidation collateral and debt are not socialized to new position
-        uint256 expectedDebt =
-            defaultDebt + socializedDebt + UNIT + nectraExternal.getPositionOutstandingFee(defaultTokenId);
+        uint256 expectedDebt = defaultDebt + socializedDebt + UNIT;
         _checkPosition(defaultTokenId, defaultCollateral + socializedCollateral, expectedDebt, defaultInterestRate);
     }
 
@@ -552,36 +530,31 @@ contract NectraModifyPositionTest is NectraBaseTest {
         );
 
         // modify default position
-        uint256 closingFeeBefore = nectraExternal.getPositionOutstandingFee(defaultTokenId);
         nectraUSD.approve(address(nectra), UNIT);
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
-        // confirm the position has deducted the repaid debt, absorbed the socialized debt and still accounts
-        // for the closing fee. Note: a portion of the closing fee was realized and added to the debt, the remainder
-        // is returned by calculateOutstandingFee. The sum of the realized amount and the remainder equals the initial closing fee.
-        uint256 expectedDebt = defaultDebt + socializedDebt - UNIT + closingFeeBefore;
+        // confirm the position has deducted the repaid debt, absorbed the socialized debt.
+        uint256 expectedDebt = defaultDebt + socializedDebt - UNIT;
         _checkPosition(defaultTokenId, defaultCollateral + socializedCollateral, expectedDebt, defaultInterestRate);
     }
 
     // Success Cases (Full checks)
     function test_should_succeed_when_increasing_debt() public {
         // increase debt
-        nectra.modifyPosition(defaultTokenId, 0, 1234 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, 1234 ether, "");
 
         // confirm position state is updated
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + 1234 ether + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + 1234 ether, defaultInterestRate);
     }
 
     function test_should_succeed_when_decreasing_debt() public {
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
         nectraUSD.approve(address(nectra), 567 ether);
 
         // decrease debt
-        nectra.modifyPosition(defaultTokenId, 0, -567 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -567 ether, "");
 
         // confirm position state is updated
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - 567 ether + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - 567 ether, defaultInterestRate);
     }
 
     // function test_should_apply_open_fee_equally_even_debt_is_increased_or_initally_large() public {
@@ -621,13 +594,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _createAndFullyRedeemPosition();
 
         // create new position in 0.5% bucket with default position size
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm accumulated redeemed collateral is not socialized to new position
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
     }
 
     function test_should_not_socialize_redeemed_collateral_to_new_position_in_new_bucket() public {
@@ -635,39 +605,36 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _createAndFullyRedeemPosition();
 
         uint256 interestRate = 0.1 ether;
+
+        // change system IR to 0.5% bucket
+        nectra.setSystemInterestRate(interestRate);
+
         // create new position in 5% bucket with default position
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), interestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm accumulated redeemed collateral is not socialized to new position
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, interestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, interestRate);
     }
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_closing() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         uint256 collateralBalanceBefore = address(this).balance;
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
@@ -675,10 +642,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // close position
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectraUSD.approve(address(nectra), debt);
-        nectra.modifyPosition(tokenId, -int256(collateral), -int256(debt), systemParams.minimumInterestRate, "");
+        nectra.modifyPosition(tokenId, -int256(collateral), -int256(debt), "");
 
         // confirm position is correct after closing
-        _checkPosition(tokenId, 0, 0, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, 0, 0, defaultInterestRate);
 
         // confirm transfer amounts are correct
         assertApproxEqRel(
@@ -689,202 +656,173 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_repaying() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // repay debt
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         nectraUSD.approve(address(nectra), UNIT);
-        nectra.modifyPosition(tokenId, 0, -1 ether, systemParams.minimumInterestRate, "");
+        nectra.modifyPosition(tokenId, 0, -1 ether, "");
 
         // confirm position is correct after repaying
-        _checkPosition(tokenId, collateral, debt - UNIT, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateral, debt - UNIT, defaultInterestRate);
     }
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_borrowing() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // borrow debt
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
-        nectra.modifyPosition(tokenId, 0, 1 ether, systemParams.minimumInterestRate, "");
+        nectra.modifyPosition(tokenId, 0, 1 ether, "");
 
         // Note:when borrowing the outstanding fee is increased by
         // the change amount multiplied by the open fee percentage
         uint256 newFee = UNIT * systemParams.openFeePercentage / UNIT;
-        _checkPosition(tokenId, collateral, debt + UNIT + newFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateral, debt + UNIT + newFee, defaultInterestRate);
     }
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_depositing() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // deposit collateral
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
-        nectra.modifyPosition{value: 1 ether}(tokenId, 1 ether, 0, systemParams.minimumInterestRate, "");
+        nectra.modifyPosition{value: 1 ether}(tokenId, 1 ether, 0, "");
 
         // confirm position is correct after depositing
-        _checkPosition(tokenId, collateral + UNIT, debt, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateral + UNIT, debt, defaultInterestRate);
     }
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_withdrawing() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // withdraw collateral
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
-        nectra.modifyPosition(tokenId, -1 ether, 0, systemParams.minimumInterestRate, "");
+        nectra.modifyPosition(tokenId, -1 ether, 0, "");
 
         // confirm position is correct after withdrawing
-        _checkPosition(tokenId, collateral - UNIT, debt, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateral - UNIT, debt, defaultInterestRate);
     }
 
     function test_should_socialize_redeemed_collateral_to_existing_position_before_increasing_interest_rate() public {
         // create position in 0.5% bucket before redemption
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct before redemption
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
 
-        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(systemParams.minimumInterestRate);
-        uint256 positionDebtBeforeRedemption =
-            nectraExternal.getPositionDebt(tokenId) - nectraExternal.getPositionOutstandingFee(tokenId);
+        uint256 bucketDebtBeforeRedemption = nectraExternal.getBucketDebt(defaultInterestRate);
+        uint256 positionDebtBeforeRedemption = nectraExternal.getPositionDebt(tokenId);
 
         // increase redemption accumulator for 0.5% bucket
         (uint256 redeemedCollateral, uint256 redeemedDebt) = _createAndFullyRedeemPosition();
 
         uint256 factor = positionDebtBeforeRedemption * UNIT / (bucketDebtBeforeRedemption + redeemedDebt);
         uint256 collateralAfterRedemption = defaultCollateral - redeemedCollateral * factor / UNIT;
-        uint256 debtAfterRedemption = defaultDebt + closingFee - redeemedDebt * factor / UNIT;
+        uint256 debtAfterRedemption = defaultDebt - redeemedDebt * factor / UNIT;
 
         // confirm position is correct before modification
-        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // increase interest rate
-        nectra.modifyPosition(tokenId, 0, 0, systemParams.minimumInterestRate + systemParams.interestRateIncrement, "");
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.modifyPosition(tokenId, 0, 0, "");
 
         // confirm position is correct after increasing interest rate
         _checkPosition(
             tokenId,
             collateralAfterRedemption,
             debtAfterRedemption,
-            systemParams.minimumInterestRate + systemParams.interestRateIncrement
+            defaultInterestRate + systemParams.interestRateIncrement
         );
     }
 
     function test_migrating_to_a_bucket_with_a_new_epoch_should_work() public {
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0,
-            int256(defaultCollateral),
-            int256(defaultDebt),
-            systemParams.minimumInterestRate + systemParams.interestRateIncrement,
-            ""
-        );
-
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // fully redeem the first bucket
         _createAndFullyRedeemPosition();
 
         // migrate position to new epoch
-        nectra.modifyPosition(tokenId, 0, 0, systemParams.minimumInterestRate, "");
+        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.modifyPosition(tokenId, 0, 0, "");
 
         // confirm position is correct after migration
-        _checkPosition(tokenId, defaultCollateral, defaultDebt + closingFee, systemParams.minimumInterestRate);
+        _checkPosition(tokenId, defaultCollateral, defaultDebt, defaultInterestRate);
     }
 
     function test_migrating_to_a_bucket_should_change_bucket_collateral() public {
-        uint256 initialBucket = systemParams.minimumInterestRate;
-        uint256 newBucket = systemParams.minimumInterestRate + systemParams.interestRateIncrement;
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0,
-            int256(defaultCollateral),
-            int256(defaultDebt),
-            initialBucket,
-            ""
-        );
+        uint256 initialBucket = defaultInterestRate + 0.5 ether;
+        uint256 newBucket = initialBucket + systemParams.interestRateIncrement;
+        
+        nectra.setSystemInterestRate(initialBucket);
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // get both bucket collateral
         (NectraLib.BucketState memory initialBucketState, ) = nectra.getBucketState(initialBucket);
@@ -895,7 +833,8 @@ contract NectraModifyPositionTest is NectraBaseTest {
         assertEq(newBucketState.collateral, 0, "New bucket collateral is incorrect");
 
         // migrate position to new bucket
-        nectra.modifyPosition(tokenId, 0, 0, newBucket, "");
+        nectra.setSystemInterestRate(newBucket);
+        nectra.modifyPosition(tokenId, 0, 0, "");
 
         // confirm bucket collateral is correct after migration
         (initialBucketState, ) = nectra.getBucketState(initialBucket);
@@ -908,13 +847,10 @@ contract NectraModifyPositionTest is NectraBaseTest {
     // withdraw should be reentrant safe
     function test_should_be_reentrant_safe() public {
         // create position
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(defaultDebt), defaultInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // confirm position is correct
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-        uint256 totalDebt = defaultDebt + closingFee;
+        uint256 totalDebt = defaultDebt;
         _checkPosition(tokenId, defaultCollateral, totalDebt, defaultInterestRate);
 
         // Create reentrancy helper
@@ -940,9 +876,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         // position owner try to increase debt
         vm.expectRevert(INectra.InvalidCollateralPrice.selector);
-        nectra.modifyPosition(
-            defaultTokenId, int256(defaultCollateral), int256(defaultDebt + 1), defaultInterestRate, ""
-        );
+        nectra.modifyPosition(defaultTokenId, int256(defaultCollateral), int256(defaultDebt + 1), "");
     }
 
     function test_should_fail_when_withdrawing_with_stale_oracle() public {
@@ -950,9 +884,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         // position owner try to decrease collateral
         vm.expectRevert(INectra.InvalidCollateralPrice.selector);
-        nectra.modifyPosition(
-            defaultTokenId, int256(defaultCollateral - 1), int256(defaultDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition(defaultTokenId, int256(defaultCollateral - 1), int256(defaultDebt), "");
     }
 
     function test_should_fail_when_changing_interest_rate_with_stale_oracle() public {
@@ -960,46 +892,30 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         // position owner try to increase interest rate
         vm.expectRevert(INectra.InvalidCollateralPrice.selector);
-        nectra.modifyPosition(
-            defaultTokenId,
-            int256(defaultCollateral),
-            int256(defaultDebt),
-            defaultInterestRate + systemParams.interestRateIncrement,
-            ""
-        );
+        nectra.modifyPosition(defaultTokenId, int256(defaultCollateral), int256(defaultDebt), "");
 
         // position owner try to decrease interest rate
         vm.expectRevert(INectra.InvalidCollateralPrice.selector);
-        nectra.modifyPosition(
-            defaultTokenId,
-            int256(defaultCollateral),
-            int256(defaultDebt),
-            defaultInterestRate - systemParams.interestRateIncrement,
-            ""
-        );
+        nectra.modifyPosition(defaultTokenId, int256(defaultCollateral), int256(defaultDebt), "");
     }
 
     function test_should_allow_repaying_with_stale_oracle() public {
         oracle.setStale(true);
 
-        // get closing fee before change to calculate full charge
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-
         // position owner try to repay debt
         nectraUSD.approve(address(nectra), UNIT);
-        nectra.modifyPosition(defaultTokenId, 0, -1 ether, defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, 0, -1 ether, "");
 
-        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - UNIT, defaultInterestRate);
     }
 
     function test_should_allow_depositing_with_stale_oracle() public {
         oracle.setStale(true);
 
         // position owner try to deposit collateral
-        nectra.modifyPosition{value: 1 ether}(defaultTokenId, 1 ether, 0, defaultInterestRate, "");
+        nectra.modifyPosition{value: 1 ether}(defaultTokenId, 1 ether, 0, "");
 
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-        _checkPosition(defaultTokenId, defaultCollateral + 1 ether, defaultDebt + closingFee, defaultInterestRate);
+        _checkPosition(defaultTokenId, defaultCollateral + 1 ether, defaultDebt, defaultInterestRate);
     }
 
     function test_should_allow_closing_with_stale_oracle() public {
@@ -1007,17 +923,16 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 collateralBalanceBefore = address(this).balance;
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(defaultTokenId);
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
 
         // position owner try to close position
         nectraUSD.approve(address(nectra), debt);
-        nectra.modifyPosition(defaultTokenId, -int256(collateral), -int256(debt), defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -int256(collateral), -int256(debt), "");
 
         _checkPosition(defaultTokenId, 0, 0, defaultInterestRate);
 
         // confirm transfer amounts are correct
         assertEq(address(this).balance - collateralBalanceBefore, collateral, "Incorrect collateral received");
-        assertEq(nUSDBalanceBefore - nectraUSD.balanceOf(address(this)) - closingFee, debt, "Incorrect debt paid");
+        assertEq(nUSDBalanceBefore - nectraUSD.balanceOf(address(this)), debt, "Incorrect debt paid");
     }
 
     // Amount caps
@@ -1028,7 +943,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // close position but withdraw more collateral than what is available
         deal(address(nectraUSD), address(this), debt);
         nectraUSD.approve(address(nectra), debt);
-        nectra.modifyPosition(defaultTokenId, -int256(collateral + 10 ether), -int256(debt), defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -int256(collateral + 10 ether), -int256(debt), "");
 
         // confirm position is correct
         _checkPosition(defaultTokenId, 0, 0, defaultInterestRate);
@@ -1045,7 +960,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         // close position but repay more debt than what is available
         nectraUSD.approve(address(nectra), debt * 2);
-        nectra.modifyPosition(defaultTokenId, -int256(collateral), -int256(debt * 2), defaultInterestRate, "");
+        nectra.modifyPosition(defaultTokenId, -int256(collateral), -int256(debt * 2), "");
 
         // confirm position is correct
         _checkPosition(defaultTokenId, 0, 0, defaultInterestRate);
@@ -1059,9 +974,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 collateralAmount = 1000 ether;
         uint256 debtAtIssuance =
             collateralAmount * initialPrice / (systemParams.issuanceRatio * (UNIT + systemParams.openFeePercentage) / UNIT);
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(
-            0, int256(collateralAmount), int256(debtAtIssuance), systemParams.minimumInterestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(debtAtIssuance), "");
 
         // move price to force liquidation price
         uint256 forceLiquidationPrice = debtAtIssuance * systemParams.fullLiquidationRatio / collateralAmount;
@@ -1084,10 +997,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // if it is not excluded the resultant cratio will be below the issuance ratio.
         socializedDebt =
             socializedCollateral * initialPrice / (systemParams.issuanceRatio * (UNIT + systemParams.openFeePercentage) / UNIT);
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: socializedCollateral}(
-            0, int256(socializedCollateral), int256(socializedDebt), interestRate, ""
-        );
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: socializedCollateral}(0, int256(socializedCollateral), int256(socializedDebt), "");
 
         // move price to force liquidation price
         uint256 forceLiquidationPrice = socializedDebt * systemParams.fullLiquidationRatio / socializedCollateral;
@@ -1100,7 +1010,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         oracle.setCurrentPrice(initialPrice);
 
         // increase socialized debt by closing fee and full liquidation fee that were also socialized
-        socializedDebt += closingFee + systemParams.fullLiquidationFee;
+        socializedDebt += systemParams.fullLiquidationFee;
     }
 
     function _createAndForceLiquidatePositionInBucketWithCollateral(uint256 interestRate, uint256 collateralAmount)
@@ -1109,9 +1019,8 @@ contract NectraModifyPositionTest is NectraBaseTest {
         (uint256 initialPrice,) = oracle.getLatestPrice();
         uint256 debtAtIssuance =
             collateralAmount * initialPrice / (systemParams.issuanceRatio * (UNIT + systemParams.openFeePercentage) / UNIT);
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(
-            0, int256(collateralAmount), int256(debtAtIssuance), interestRate, ""
-        );
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(debtAtIssuance), "");
+
         // move price to force liquidation price
         uint256 forceLiquidationPrice = debtAtIssuance * systemParams.fullLiquidationRatio / collateralAmount;
         oracle.setCurrentPrice(forceLiquidationPrice);
@@ -1126,9 +1035,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
     function _createAndFullyRedeemPosition() internal returns (uint256 redeemedCollateral, uint256 redeemedDebt) {
         uint256 collateral = 1000 ether;
         redeemedDebt = 500 ether;
-        nectra.modifyPosition{value: collateral}(
-            0, int256(collateral), int256(redeemedDebt), systemParams.minimumInterestRate, ""
-        );
+        nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(redeemedDebt), "");
 
         // calculate redeemed collateral
         (uint256 price,) = oracle.getLatestPrice();

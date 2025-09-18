@@ -49,6 +49,5 @@ interface INectraExternal {
     function getPositionDebt(uint256 tokenId) external view returns (uint256);
     function getPositionFullLiquidationPrice(uint256 tokenId) external view returns (uint256);
     function getPositionLiquidationPrice(uint256 tokenId) external view returns (uint256);
-    function getPositionOutstandingFee(uint256 tokenId) external view returns (uint256);
     function getPositionsForAddress(address owner) external view returns (PositionData[] memory);
 }

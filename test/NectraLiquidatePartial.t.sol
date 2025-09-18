@@ -41,27 +41,21 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     function setUp() public virtual override {
         super.setUp();
 
+        nectra.setSystemInterestRate(defaultInterestRate);
+
         uint256 tokenId;
         // Open positions with different interest rates
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(10 ether), defaultInterestRate, ""
-        );
+        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(10 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(85 ether), defaultInterestRate, ""
-        );
+        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(85 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(20 ether), defaultInterestRate, ""
-        );
+        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(
-            0, int256(defaultCollateral), int256(20 ether), defaultInterestRate, ""
-        );
+        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
         tokens.push(tokenId);
 
         mockDex = new DEXMock(address(nectraUSD), address(nectra), address(oracle));
@@ -569,11 +563,8 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         nectraUSD.approve(address(nectra), type(uint256).max);
 
         uint256 newDebt = liquidationAmounts.initialDebt - 15 ether;
-        uint256 closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
         // TODO: just making these ints so that it will compile, the values will need to be deltas and not absolute values
-        nectra.modifyPosition(
-            tokenId, int256(liquidationAmounts.initialCollateral), int256(newDebt), defaultInterestRate, ""
-        );
+        nectra.modifyPosition(tokenId, int256(liquidationAmounts.initialCollateral), int256(newDebt), "");
 
         // check that position is in healthy state
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
@@ -583,7 +574,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
             systemParams.issuanceRatio,
             "Position is not in healthy state"
         );
-        assertEq(nectraUSD.balanceOf(address(this)), nUSDBefore - 15 ether - closingFee, "nUSD not burned correctly");
+        assertEq(nectraUSD.balanceOf(address(this)), nUSDBefore - 15 ether, "nUSD not burned correctly");
         _checkPosition(tokenId, liquidationAmounts.initialCollateral, newDebt, defaultInterestRate);
     }
 
@@ -639,8 +630,6 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     {
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
         (liquidationAmounts.initialCollateral, liquidationAmounts.initialDebt,) = nectraExternal.getPosition(tokenId);
-        liquidationAmounts.closingFee = nectraExternal.getPositionOutstandingFee(tokenId);
-
         liquidationAmounts.liquidationPrice = nectraExternal.getPositionLiquidationPrice(tokenId);
         liquidationAmounts.liquidationPrice = liquidationAmounts.liquidationPrice.mulWad(priceScale);
 

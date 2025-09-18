@@ -39,9 +39,6 @@ contract Nectra is
 
     error MinimumDepositNotMet(uint256 deposit, uint256 minimumDeposit);
     error MinimumDebtNotMet(uint256 debt, uint256 minimumDebt);
-    error InterestRateTooHigh(uint256 interestRate, uint256 maximumInterestRate);
-    error InterestRateTooLow(uint256 interestRate, uint256 minimumInterestRate);
-    error InvalidInterestRate();
     error InvalidCollateralizationRatio(uint256 cratio, uint256 minCratio);
     error CollateralMismatch();
     error NotOwnerNorApproved();
@@ -62,6 +59,10 @@ contract Nectra is
         address indexed operator
     );
 
+    /// @notice Emitted when the system set interest rate is set
+    /// @param interestRate The system set interest rate
+    event SystemInterestRateSet(uint256 interestRate);
+
     /// @param params System parameters defined in NectraBase
     function initialize(SystemParams memory params) public initializer {
         setSystemParams(params);
@@ -76,7 +77,6 @@ contract Nectra is
     /// @param tokenId Existing position tokenId (0 for new position)
     /// @param depositOrWithdraw Amount of collateral to deposit (+) or withdraw (- or type(int256).min to close)
     /// @param borrowOrRepay Amount of nUSD to borrow (+) or repay (- or type(int256).min to close)
-    /// @param interestRate Desired interest rate bucket (absolute value)
     /// @param permit Optional permit data for NUSD token approval
     /// @return tokenId The ID of the position being modified
     /// @return depositOrWithdraw Actual amount of collateral deposited or withdrawn
@@ -87,7 +87,6 @@ contract Nectra is
         uint256 tokenId,
         int256 depositOrWithdraw,
         int256 borrowOrRepay,
-        uint256 interestRate,
         bytes calldata permit
     ) external payable returns (uint256, int256, int256, uint256, uint256) {
         NectraLib.GlobalState memory global;
@@ -95,14 +94,14 @@ contract Nectra is
         NectraLib.PositionState memory position;
         NectraLib.BucketState memory oldBucket;
 
+        // use system interest rate
+        uint256 interestRate = _systemInterestRate();
+
         if (tokenId != 0) {
             (position, bucket, global) = _loadAndUpdateState(tokenId);
 
             uint256 permissionBitMask;
 
-            if (interestRate != position.interestRate) {
-                permissionBitMask |= 1 << uint256(NectraNFT.Permission.AdjustInterest);
-            }
             if (borrowOrRepay < 0) {
                 permissionBitMask |= 1 << uint256(NectraNFT.Permission.Repay);
             } else if (borrowOrRepay > 0) {
@@ -126,8 +125,7 @@ contract Nectra is
                 lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
                 lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
                 interestRate: interestRate,
-                bucketEpoch: bucket.epoch,
-                targetAccumulatedInterestPerBucketShare: 0
+                bucketEpoch: bucket.epoch
             });
         }
 
@@ -179,12 +177,11 @@ contract Nectra is
     /// @param tokenId Existing position tokenId (0 for new position)
     /// @param depositOrWithdraw Amount of collateral to deposit (+) or withdraw (- or type(int256).min to close)
     /// @param borrowOrRepay Amount of nUSD to borrow (+) or repay (- or type(int256).min to close)
-    /// @param interestRate Desired interest rate bucket (absolute value)
     /// @return depositOrWithdraw Actual amount of collateral that would be deposited or withdrawn
     /// @return borrowOrRepay Actual amount of nUSD that would be borrowed or repaid
     /// @return collateral The total collateral in the position after modification
     /// @return effectiveDebt The total effective debt of the position after modification
-    function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay, uint256 interestRate)
+    function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay)
         external
         view
         returns (int256, int256, uint256, uint256)
@@ -193,6 +190,9 @@ contract Nectra is
         NectraLib.BucketState memory bucket;
         NectraLib.PositionState memory position;
         NectraLib.BucketState memory oldBucket;
+
+        // use system interest rate
+        uint256 interestRate = _systemInterestRate();
 
         {
             if (tokenId != 0) {
@@ -206,8 +206,7 @@ contract Nectra is
                     lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
                     lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
                     interestRate: interestRate,
-                    bucketEpoch: bucket.epoch,
-                    targetAccumulatedInterestPerBucketShare: 0
+                    bucketEpoch: bucket.epoch
                 });
             }
         }
@@ -237,18 +236,20 @@ contract Nectra is
         int256 borrowOrRepay,
         uint256 interestRate
     ) internal view returns (int256, int256, uint256, uint256) {
-        require(interestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InterestRateTooHigh(interestRate, _systemConfig().MAXIMUM_INTEREST_RATE));
-        require(interestRate >= _systemConfig().MINIMUM_INTEREST_RATE, InterestRateTooLow(interestRate, _systemConfig().MINIMUM_INTEREST_RATE));
-        require(interestRate % _systemConfig().INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
-
         if (depositOrWithdraw < 0) {
             // Cannot withdraw collateral if a flash borrow is active
             _requireFlashBorrowUnlocked();
         }
 
-        uint256 outstandingFees = NectraLib.calculateOutstandingFee(position, bucket);
+        uint256 fixedRateOpenFee = 0;
+
+        // calculate fixed rate fee on new debt
+        if (borrowOrRepay > 0) {
+            fixedRateOpenFee = uint256(borrowOrRepay).mulWad(_systemConfig().OPEN_FEE_PERCENTAGE);
+        }
+
         uint256 effectiveDebt =
-            NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up) + outstandingFees;
+            NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up) + fixedRateOpenFee;
 
         // Cap withdrawal to available collateral
         if (depositOrWithdraw + position.collateral.toInt256() < 0) {
@@ -260,44 +261,17 @@ contract Nectra is
             borrowOrRepay = -int256(effectiveDebt);
         }
 
-        uint256 realizedFee = 0;
-
-        // Fee realization logic
-        if (interestRate < position.interestRate) {
-            uint256 newFee = uint256(effectiveDebt.toInt256() + borrowOrRepay).mulWad(_systemConfig().OPEN_FEE_PERCENTAGE);
-
-            // Realize all outstanding fees when lowering interest rate
-            realizedFee += outstandingFees;
-            outstandingFees = newFee;
-            effectiveDebt += newFee;
-        } else if (borrowOrRepay <= 0) {
-            // Repayment case
-            if (effectiveDebt > 0 && borrowOrRepay + effectiveDebt.toInt256() > 0) {
-                // Partial fee realization proportional to repayment
-                realizedFee = outstandingFees.mulDiv(uint256(-borrowOrRepay), effectiveDebt);
-            } else {
-                // Realize all if closing position or if fully redeemed
-                realizedFee = outstandingFees;
-            }
-
-            outstandingFees -= realizedFee;
-        } else if (borrowOrRepay > 0) {
-            // Borrowing case
-            uint256 newFee = uint256(borrowOrRepay).mulWad(_systemConfig().OPEN_FEE_PERCENTAGE);
-            outstandingFees += newFee;
-            effectiveDebt += newFee;
-        }
-
-        global.fees += realizedFee;
+        global.fees += fixedRateOpenFee;
 
         NectraLib.modifyPosition({
             position: position,
             bucket: bucket,
             global: global,
             collateralDiff: depositOrWithdraw,
-            debtDiff: borrowOrRepay + int256(realizedFee)
+            debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
 
+        // migrate position to new bucket if interest rate changes
         if (interestRate != position.interestRate && position.debtShares > 0) {
             NectraLib.copy(oldBucket, bucket);
             NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
@@ -305,26 +279,19 @@ contract Nectra is
             NectraLib.migrateBucket({position: position, srcBucket: oldBucket, dstBucket: bucket, global: global});
         }
 
-        if (position.debtShares > 0) {
-            position.targetAccumulatedInterestPerBucketShare =
-                bucket.accumulatedInterestPerShare + outstandingFees.divWad(position.debtShares);
-        } else {
-            position.targetAccumulatedInterestPerBucketShare = bucket.accumulatedInterestPerShare;
-        }
-
-        effectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
+        uint256 finalEffectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
 
         require(
             position.collateral >= _systemConfig().MINIMUM_COLLATERAL || position.collateral == 0,
             MinimumDepositNotMet(position.collateral, _systemConfig().MINIMUM_COLLATERAL)
         );
         require(
-            effectiveDebt >= _systemConfig().MINIMUM_BORROW || (effectiveDebt == 0 && position.collateral == 0),
-            MinimumDebtNotMet(effectiveDebt, _systemConfig().MINIMUM_BORROW)
+            finalEffectiveDebt >= _systemConfig().MINIMUM_BORROW || (finalEffectiveDebt == 0 && position.collateral == 0),
+            MinimumDebtNotMet(finalEffectiveDebt, _systemConfig().MINIMUM_BORROW)
         );
 
         // Can always improve c-ratio
-        if (effectiveDebt > 0 && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
+        if (finalEffectiveDebt > 0 && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
             uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
 
             // Check system collateralization ratio
@@ -335,13 +302,13 @@ contract Nectra is
                 InsufficientCollateral()
             );
 
-            uint256 cratio = position.collateral.mulWad(collateralPrice).divWad(effectiveDebt);
+            uint256 cratio = position.collateral.mulWad(collateralPrice).divWad(finalEffectiveDebt);
 
             // Check position collateralization ratio
             require(cratio >= _systemConfig().ISSUANCE_RATIO, InvalidCollateralizationRatio(cratio, _systemConfig().ISSUANCE_RATIO));
         }
 
-        return (depositOrWithdraw, borrowOrRepay, position.collateral, effectiveDebt);
+        return (depositOrWithdraw, borrowOrRepay, position.collateral, finalEffectiveDebt);
     }
 
     /// @notice Updates an existing position's accounting and finalizes state
@@ -368,6 +335,21 @@ contract Nectra is
 
         _finalizeBucket(bucket);
         _finalizeGlobal(global);
+    }
+
+    /// @notice Gets the system set interest rate
+    /// @return The system set interest rate
+    function getSystemInterestRate() external view returns (uint256) {
+        return _systemInterestRate();
+    }
+
+    /// @notice Sets the system set interest rate
+    /// @dev Only callable by the owner
+    /// @param interestRate The system set interest rate to set
+    function setSystemInterestRate(uint256 interestRate) external onlyOwner {
+        _setSystemInterestRate(interestRate);
+
+        emit SystemInterestRateSet(interestRate);
     }
 
     /// @notice Authorizes the upgrade of the implementation contract
