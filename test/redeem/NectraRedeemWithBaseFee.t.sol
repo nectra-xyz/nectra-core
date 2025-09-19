@@ -65,7 +65,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
 
         nectra.setSystemInterestRate(0.05 ether);
-        (, int256 collateral, int256 debt,,) = nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
+        nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
 
         uint256 expectedCollateral = balanceBefore + (100 ether - 29.020833333333332 ether);
         assertApproxEqRel(address(this).balance, expectedCollateral, 1e11, "Incorrect collateral after redeem");
@@ -146,6 +146,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         uint256 totalCollateralRedeemed = userCollateralReceived + feeRecipientReceived;
         uint256 feeRecipientExpectedAmount = expectedCollateralBeforeFees - actualCollateralRedeemed;
 
+        //TODO
         //assertEq(feeRecipientExpectedAmount, feeRecipientReceived, "Fee recipient expected received amount should match actual fee recipient amount received");
         assertEq(nUSDBurned, redeemAmount, "Incorrect amount of nUSD burned");
         assertEq(userNUSDDecrease, redeemAmount, "User nUSD balance decrease should match redeem amount");

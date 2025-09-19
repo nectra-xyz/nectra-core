@@ -51,7 +51,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         for (uint256 i = 0; i < 5; i++) {
             // the redemption cleared the first 5 buckets
-            (uint256 positionCollateral, uint256 positionDebt,) = nectraExternal.getPosition(tokens[i]);
+            (uint256 positionCollateral,,) = nectraExternal.getPosition(tokens[i]);
             // The position collateral should be reduced by the redemption amount less the fee
             // since the fee stays in the position
             uint256 expectedPositionCollateralWithRedemptionFee =
@@ -65,7 +65,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
         }
 
         //verify last bucket-redeemed-from amount
-        (uint256 positionCollateral1, uint256 positionDebt1,) = nectraExternal.getPosition(tokens[5]);
+        (uint256 positionCollateral1,,) = nectraExternal.getPosition(tokens[5]);
         //second last position had debt ratio of 2:3 with last position
         uint256 secondLastPositionProRataDebtDeduction = uint256(5 ether) * 2 / 3;
         uint256 expectedPositionCollateralWithRedemptionFee1 = positionCollateralBefore[5]
@@ -77,7 +77,7 @@ contract NectraRedeemWithFeesPaidToPositionTest is NectraRedeemBaseTest {
             "Incorrect second last position collateral update"
         );
 
-        (uint256 positionCollateral2, uint256 positionDebt2,) = nectraExternal.getPosition(tokens[6]);
+        (uint256 positionCollateral2,,) = nectraExternal.getPosition(tokens[6]);
         // last position had debt ratio of 1:3 with second last position
         uint256 lastPositionProRataDebtDeduction = uint256(5 ether) * 1 / 3;
         uint256 expectedPositionCollateralWithRedemptionFee2 = positionCollateralBefore[6]

@@ -250,99 +250,67 @@ contract NectraModifyPositionTest is NectraBaseTest {
         assertEq(address(notOwner).balance, notOwnerBalanceBefore + UNIT, "Not owner should have received collateral");
     }
 
-    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
-    // function test_should_fail_when_caller_is_not_owner_or_approved_to_increase_interest_rate() public {
-    //     deal(address(nectraUSD), notOwner, UNIT);
+    function test_should_not_change_interest_rate_when_debt_is_decreasing() public {
+        // set new interest rate
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
-    //     vm.startPrank(notOwner);
-    //     nectraUSD.approve(address(nectra), UNIT);
+        // position owner can decrease debt
+        nectraUSD.approve(address(nectra), 1);
+        nectra.modifyPosition(defaultTokenId, 0, -1, "");
 
-    //     vm.expectRevert(INectra.NotOwnerNorApproved.selector);
-    //     // attempt to increase interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
-    //     // confirm that interest rate was not changed
-    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-    //     _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
-    //     vm.stopPrank();
-    // }
+        _checkPosition(
+            defaultTokenId,
+            defaultCollateral,
+            defaultDebt - 1,
+            defaultInterestRate
+        );
+    }
 
-    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
-    // function test_should_pass_when_caller_is_owner_or_approved_to_increase_interest_rate() public {
-    //     // position owner can increase interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + systemParams.interestRateIncrement, "");
+    function test_should_not_change_interest_rate_when_collateral_is_increasing() public {
+        // set new interest rate
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
-    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-    //     _checkPosition(
-    //         defaultTokenId,
-    //         defaultCollateral,
-    //         defaultDebt + closingFee,
-    //         defaultInterestRate + systemParams.interestRateIncrement
-    //     );
+        // position owner can increase collateral
+        nectra.modifyPosition{ value: 1 }(defaultTokenId, 1, 0, "");
 
-    //     // authorize notOwner to increase interest rate
-    //     nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
+        _checkPosition(
+            defaultTokenId,
+            defaultCollateral + 1,
+            defaultDebt ,
+            defaultInterestRate
+        );
+    }
 
-    //     vm.startPrank(notOwner);
-    //     // notOwner can increase interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate + 2 * systemParams.interestRateIncrement, "");
+        function test_should_change_interest_rate_when_debt_is_increasing() public {
+        // set new interest rate
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
-    //     closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+        // position owner can increase debt
+        nectra.modifyPosition(defaultTokenId, 0, 1, "");
 
-    //     _checkPosition(
-    //         defaultTokenId,
-    //         defaultCollateral,
-    //         defaultDebt + closingFee,
-    //         defaultInterestRate + 2 * systemParams.interestRateIncrement
-    //     );
-    //     vm.stopPrank();
-    // }
+        _checkPosition(
+            defaultTokenId,
+            defaultCollateral,
+            defaultDebt + 1,
+            defaultInterestRate + systemParams.interestRateIncrement
+        );
+    }
 
-    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
-    // function test_should_fail_when_caller_is_not_owner_or_approved_to_decrease_interest_rate() public {
-    //     vm.startPrank(notOwner);
-    //     vm.expectRevert(INectra.NotOwnerNorApproved.selector);
-    //     // attempt to decrease interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
-    //     // confirm that interest rate was not changed
-    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-    //     _checkPosition(defaultTokenId, defaultCollateral, defaultDebt + closingFee, defaultInterestRate);
-    //     vm.stopPrank();
-    // }
+    function test_should_change_interest_rate_when_collateral_is_decreasing() public {
+        // set new interest rate
+        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
-    // TODO this will now require the caller to try update the position which should cause an update to the new system IR
-    // function test_should_pass_when_caller_is_owner_or_approved_to_decrease_interest_rate() public {
-    //     uint256 closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
+        // position owner can decrease collateral
+        nectra.modifyPosition(defaultTokenId, -1, 0, "");
 
-    //     // position owner can decrease interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - systemParams.interestRateIncrement, "");
+        _checkPosition(
+            defaultTokenId,
+            defaultCollateral - 1,
+            defaultDebt ,
+            defaultInterestRate + systemParams.interestRateIncrement
+        );
+    }
 
-    //     _checkPosition(
-    //         defaultTokenId,
-    //         defaultCollateral,
-    //         defaultDebt + closingFee,
-    //         defaultInterestRate - systemParams.interestRateIncrement
-    //     );
-
-    //     // authorize notOwner to increase interest rate
-    //     nectraNFT.authorize(defaultTokenId, notOwner, NectraNFT.Permission.AdjustInterest);
-
-    //     vm.startPrank(notOwner);
-    //     // Should realize a new closing fee when decreasing interest rate further
-    //     closingFee = nectraExternal.getPositionOutstandingFee(defaultTokenId);
-
-    //     // notOwner can decrease interest rate
-    //     nectra.modifyPosition(defaultTokenId, 0, 0, defaultInterestRate - 2 * systemParams.interestRateIncrement, "");
-
-    //     _checkPosition(
-    //         defaultTokenId,
-    //         defaultCollateral,
-    //         defaultDebt + closingFee,
-    //         defaultInterestRate - 2 * systemParams.interestRateIncrement
-    //     );
-    //     vm.stopPrank();
-    // }
-
-    // Collateral Mismatch
     function test_should_fail_when_opening_position_with_collateral_mismatch_no_payment() public {
         vm.expectRevert(INectra.CollateralMismatch.selector);
         nectra.modifyPosition{value: 0 ether}(0, 1 ether, 0.5 ether, "");

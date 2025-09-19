@@ -275,8 +275,8 @@ contract Nectra is
             debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
 
-        // migrate position to new bucket if interest rate changes and debt is increasing
-        if (interestRate != position.interestRate && borrowOrRepay > 0) {
+        // migrate position to new bucket if interest rate changes and c-ratio is decreasing
+        if (interestRate != position.interestRate && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
             NectraLib.copy(oldBucket, bucket);
             NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
 
