@@ -41,7 +41,7 @@ contract SatsumaHandlerTest is Test {
         wcbtc = new WCBTCMock();
 
         // Deploy DEX mock
-        satsumaMock = new SatsumaMock(address(nusd), nectra, address(oracle), address(wcbtc));
+        satsumaMock = new SatsumaMock(address(nusd), address(0), nectra, address(oracle), address(wcbtc));
 
         satsumaMock.setSlippageAndFees(0.01 ether); // 1% slippage and fees
 

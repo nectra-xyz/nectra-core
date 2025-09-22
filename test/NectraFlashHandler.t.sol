@@ -58,7 +58,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         wcbtc = new WCBTCMock();
 
         // Deploy Satsuma mock
-        satsumaMock = new SatsumaMock(address(nectraUSD), address(nectra), address(oracle), address(wcbtc));
+        satsumaMock = new SatsumaMock(address(nectraUSD), address(0), address(nectra), address(oracle), address(wcbtc));
         satsumaMock.setSlippageAndFees(dexFeesAndSlippage); // 0.8% slippage and fees
 
         // Deploy SatsumaHandler wrapping the mock

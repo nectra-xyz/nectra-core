@@ -13,11 +13,17 @@ contract DEXMock is Test {
     address public owner;
     OracleAggregator public oracle;
     uint256 public slippageAndFees;
+    uint256 public stableFees;
+    uint256 public stableSlippage;
+
 
     constructor(address _nectraUSD, address _nectra, address _oracle) {
         nUSD = NUSDToken(_nectraUSD);
         owner = _nectra;
         oracle = OracleAggregator(_oracle);
+
+        stableFees = 0.0001 ether;    // 0.01% fees
+        stableSlippage = 0.003 ether; // 0.3% slippage
     }
     // Mock DEX contract that allows buying and selling cBTC for nUSD
 
@@ -63,7 +69,41 @@ contract DEXMock is Test {
         return nUSDAmount;
     }
 
+    function buyUSDC(uint256 amountD18) external returns (uint256 nUSDAmountOutD18) {
+        require(amountD18 > 0, "Amount must be greater than 0");
+
+        nUSDAmountOutD18 = amountD18; // USDC is pegged to 1 USD
+        
+        if (stableFees > 0) {
+            nUSDAmountOutD18 = nUSDAmountOutD18 * (UNIT - stableFees) / UNIT;
+        }
+
+        if (stableSlippage > 0) {
+            nUSDAmountOutD18 = nUSDAmountOutD18 * (UNIT - stableSlippage) / UNIT;
+        }
+    }
+
+    function sellUSDC(uint256 amountD18) external payable returns (uint256 nUSDAmountInD18) {
+        require(amountD18 > 0, "Amount must be greater than 0");
+
+        nUSDAmountInD18 = amountD18; // USDC is pegged to 1 USD
+        
+        if (stableFees > 0) {
+            nUSDAmountInD18 = nUSDAmountInD18 * (UNIT - stableFees) / UNIT;
+        }
+
+        if (stableSlippage > 0) {
+            nUSDAmountInD18 = nUSDAmountInD18 * (UNIT - stableSlippage) / UNIT;
+        }
+        
+    }
+
     function setSlippageAndFees(uint256 _slippageAndFees) external {
         slippageAndFees = _slippageAndFees;
+    }
+
+    function setStableFeesAndSlippage(uint256 _stableFees, uint256 _stableSlippage) external {
+        stableFees = _stableFees;
+        stableSlippage = _stableSlippage;
     }
 }

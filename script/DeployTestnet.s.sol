@@ -62,9 +62,9 @@ contract DeployTestnet is Script {
             feeRecipientAddress: savingsAccount,
             minimumCollateral: 0, // 0 cBTC
             minimumDebt: 50 ether, // 50 nUSD
-            systemInterestRate: 0.0025 ether, // 0.25%
+            systemInterestRate: 0.025 ether, // 2.5%
             maximumInterestRate: 1 ether, // 100%
-            minimumInterestRate: 0 ether, // 0.5%
+            minimumInterestRate: 0 ether, // 0%
             interestRateIncrement: 0.0001 ether, // 0.01%
             liquidationRatio: 1.1 ether, // 110%
             liquidatorRewardPercentage: 0.9 ether, // 90%
@@ -75,7 +75,7 @@ contract DeployTestnet is Script {
             issuanceRatio: 1.2 ether, // 120%
             redemptionFeeDecayPeriod: 6 hours, // 6 hours
             redemptionBaseFee: 0.005 ether, // 0.5%
-            redemptionDynamicFeeScalar: 1, // 1
+            redemptionDynamicFeeScalar: 1 ether, // 1
             redemptionFeeTreasuryThreshold: 0, // 0 -> Full fee to FEE_RECIPIENT
             openFeePercentage: 0.0015 ether, // 0.15%
             flashMintFee: 0.0025 ether, // 0.25%
