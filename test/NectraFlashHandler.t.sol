@@ -52,7 +52,7 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         systemParams.openFeePercentage = 0.002 ether; // 0.2%
         super.setUp();
 
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
 
         // Deploy WCBTC mock
         wcbtc = new WCBTCMock();

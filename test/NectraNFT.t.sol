@@ -22,7 +22,7 @@ contract NectraNFTTest is NectraBaseTest {
     function setUp() public override {
         super.setUp();
 
-        nectra.setSystemInterestRate(0.05 ether);
+        nectra.storeSystemInterestRate(0.05 ether);
 
         // create random positions as noise
         for (uint256 i = 0; i < numNoisePositions; i++) {

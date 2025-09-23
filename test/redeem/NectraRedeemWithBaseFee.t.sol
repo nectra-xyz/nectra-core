@@ -46,7 +46,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         nectra.redeem(60 ether, 0 ether);
         assertApproxEqRel(nectraExternal.getBucketDebt(0.05 ether), 0 ether, 1e11);
 
-        nectra.setSystemInterestRate(0.05 ether);
+        nectra.storeSystemInterestRate(0.05 ether);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, "");
         assertApproxEqRel(nectraExternal.getBucketDebt(0.05 ether), 10 ether, 1e11);
 
@@ -64,7 +64,7 @@ contract NectraRedeemWithBaseFeeTest is NectraRedeemBaseTest {
         uint256 balanceBefore = address(this).balance;
         uint256 nUSDBalanceBefore = nectraUSD.balanceOf(address(this));
 
-        nectra.setSystemInterestRate(0.05 ether);
+        nectra.storeSystemInterestRate(0.05 ether);
         nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
 
         uint256 expectedCollateral = balanceBefore + (100 ether - 29.020833333333332 ether);

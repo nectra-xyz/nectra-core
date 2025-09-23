@@ -15,7 +15,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
     function setUp() public virtual override {
         super.setUp();
 
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
     }
 
     function test_should_fail_when_redeeming_during_flash_mint() public {
@@ -142,7 +142,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 collateralAmount = 1 ether;
 
         uint256 bucket = systemParams.minimumInterestRate;
-        nectra.setSystemInterestRate(bucket);
+        nectra.storeSystemInterestRate(bucket);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(smallDebtAmount), "");
 
         uint256 initialNUSDBalance = nectraUSD.balanceOf(address(this));
@@ -169,7 +169,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
     function test_should_fail_if_trying_to_redeem_more_than_global_debt() public {
         uint256 startingInterestRate = 0.2 ether;
         for (uint256 i = 0; i < 100; i++) {
-            nectra.setSystemInterestRate(startingInterestRate);
+            nectra.storeSystemInterestRate(startingInterestRate);
             nectra.modifyPosition{value: 1 ether}(0, 1 ether, 0.2 ether, "");
             startingInterestRate += systemParams.interestRateIncrement;
         }
@@ -181,7 +181,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         // collateral 100, debt = 5
         // 100 * 1.2 / 1.4 ~= 85
 
-        nectra.setSystemInterestRate(interestRates[2]);
+        nectra.storeSystemInterestRate(interestRates[2]);
         nectra.modifyPosition(tokens[2], 0, 80 ether, "");
 
         uint256 initialBucketDebt = nectraExternal.getBucketDebt(interestRates[2]);
@@ -205,11 +205,11 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 tokenIdMid;
         uint256 tokenIdHigh;
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         (tokenIdLow,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
-        nectra.setSystemInterestRate(MID_INTEREST_RATE);
+        nectra.storeSystemInterestRate(MID_INTEREST_RATE);
         (tokenIdMid,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
-        nectra.setSystemInterestRate(HIGH_INTEREST_RATE);
+        nectra.storeSystemInterestRate(HIGH_INTEREST_RATE);
         (tokenIdHigh,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
 
         uint256 initialLowBucketDebt = nectraExternal.getBucketDebt(LOW_INTEREST_RATE);
@@ -244,7 +244,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             "High bucket should still be unchanged"
         );
 
-        nectra.setSystemInterestRate(VERY_LOW_MID_RATE);
+        nectra.storeSystemInterestRate(VERY_LOW_MID_RATE);
         uint256 tokenIdVeryLowMid;
         (tokenIdVeryLowMid,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 25 ether, "");
 
@@ -256,7 +256,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             nectraExternal.getBucketDebt(MID_INTEREST_RATE), 20 ether, 1e11, "2% bucket should remain unchanged"
         );
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         uint256 tokenIdNewLow;
         (tokenIdNewLow,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
 
@@ -298,11 +298,11 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 tokenIdMid;
         uint256 tokenIdHigh;
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         (tokenIdLow,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
-        nectra.setSystemInterestRate(MID_INTEREST_RATE);
+        nectra.storeSystemInterestRate(MID_INTEREST_RATE);
         (tokenIdMid,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
-        nectra.setSystemInterestRate(HIGH_INTEREST_RATE);
+        nectra.storeSystemInterestRate(HIGH_INTEREST_RATE);
         (tokenIdHigh,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
 
         uint256 initialLowBucketDebt = nectraExternal.getBucketDebt(LOW_INTEREST_RATE);
@@ -338,7 +338,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             "High bucket should still be unchanged"
         );
 
-        nectra.setSystemInterestRate(VERY_LOW_MID_RATE);
+        nectra.storeSystemInterestRate(VERY_LOW_MID_RATE);
         uint256 tokenIdVeryLowMid;
         (tokenIdVeryLowMid,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 25 ether, "");
 
@@ -353,7 +353,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             "MID_INTEREST_RATE bucket should remain unchanged"
         );
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         uint256 tokenIdNewLow;
         (tokenIdNewLow,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
 
@@ -393,9 +393,9 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 tokenIdMid;
         uint256 tokenIdHigh;
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         (tokenIdLow,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
-        nectra.setSystemInterestRate(HIGH_INTEREST_RATE);
+        nectra.storeSystemInterestRate(HIGH_INTEREST_RATE);
         (tokenIdHigh,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 30 ether, "");
 
         uint256 initialLowBucketDebt = nectraExternal.getBucketDebt(LOW_INTEREST_RATE);
@@ -413,7 +413,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
             nectraExternal.getBucketDebt(HIGH_INTEREST_RATE), initialHighBucketDebt, "High bucket should be unchanged"
         );
 
-        nectra.setSystemInterestRate(LOW_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOW_INTEREST_RATE);
         nectra.modifyPosition(tokenIdLow, type(int256).min, type(int256).min, "");
 
         nectra.redeem(1 ether, 0);
@@ -436,7 +436,7 @@ contract NectraRedeemTest is NectraRedeemBaseTest {
         uint256 initialETHBalance = address(this).balance;
         uint256 initialNUSDBalance = nectraUSD.balanceOf(address(this));
 
-        nectra.setSystemInterestRate(LOWEST_INTEREST_RATE);
+        nectra.storeSystemInterestRate(LOWEST_INTEREST_RATE);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(debtAmount), "");
 
         uint256 postPositionETHBalance = address(this).balance;

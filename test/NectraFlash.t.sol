@@ -42,7 +42,7 @@ contract NectraFlashTest is NectraBaseTest {
         // systemParams.feeRecipientAddress = makeAddr("feeRecipient");
         super.setUp();
 
-        nectra.setSystemInterestRate(interestRate);
+        nectra.storeSystemInterestRate(interestRate);
 
         // Get some nUSD for flash fees and give nectra some cBTC to loan out
         int256 debtBeforeFee = int256(positionDebt * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt before fee

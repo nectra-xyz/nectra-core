@@ -41,7 +41,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     function setUp() public virtual override {
         super.setUp();
 
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
 
         uint256 tokenId;
         // Open positions with different interest rates

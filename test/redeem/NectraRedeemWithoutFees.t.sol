@@ -76,7 +76,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
 
         assertApproxEqRel(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1e11);
 
-        nectra.setSystemInterestRate(0.05 ether);
+        nectra.storeSystemInterestRate(0.05 ether);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, "");
 
         assertApproxEqRel(nectraExternal.getPositionDebt(tokenId), 10 ether, 1e11);
@@ -93,7 +93,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
 
         assertApproxEqAbs(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1);
 
-        nectra.setSystemInterestRate(interestRates[0]);
+        nectra.storeSystemInterestRate(interestRates[0]);
         (, int256 _collateral, int256 _debt,,) = nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
 
         assertApproxEqRel(_collateral, -70.833333333333333 ether, 1e11); // 100 - 35 / 1.2
@@ -146,7 +146,7 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
             (uint256 currentCollateral,,) = nectraExternal.getPosition(tokens[i]);
 
             // Claim remaining collateral
-            nectra.setSystemInterestRate(interestRates[i]);
+            nectra.storeSystemInterestRate(interestRates[i]);
             nectra.modifyPosition(tokens[i], type(int256).min, type(int256).min, "");
 
             uint256 balanceAfterClaim = address(this).balance;
@@ -162,13 +162,13 @@ contract NectraRedeemWithoutFeesTest is NectraRedeemBaseTest {
         }
 
         // close last two positions
-        nectra.setSystemInterestRate(interestRates[5]);
+        nectra.storeSystemInterestRate(interestRates[5]);
         nectra.modifyPosition(tokens[5], type(int256).min, type(int256).min, "");
         (uint256 finalCollateral1, uint256 finalDebt1,) = nectraExternal.getPosition(tokens[5]);
         assertEq(finalCollateral1, 0, "Position should have no remaining collateral");
         assertEq(finalDebt1, 0, "Position should have no remaining debt");
 
-        nectra.setSystemInterestRate(interestRates[6]);
+        nectra.storeSystemInterestRate(interestRates[6]);
         nectra.modifyPosition(tokens[6], type(int256).min, type(int256).min, "");
         (uint256 finalCollateral2, uint256 finalDebt2,) = nectraExternal.getPosition(tokens[6]);
         assertEq(finalCollateral2, 0, "Position should have no remaining collateral");

@@ -34,7 +34,7 @@ contract NectraRedeemBaseTest is NectraBaseTest {
         (collateral[6], debt[6], interestRates[6]) = (100 ether, 15 ether, 0.2 ether);
 
         for (uint256 i = 0; i < interestRates.length; i++) {
-            nectra.setSystemInterestRate(interestRates[i]);
+            nectra.storeSystemInterestRate(interestRates[i]);
             (tokens[i],,,,) = nectra.modifyPosition{value: collateral[i]}(0, int256(collateral[i]), int256(debt[i]), "");
         }
 

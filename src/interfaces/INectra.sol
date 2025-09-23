@@ -23,6 +23,9 @@ interface INectra {
     error NotEligibleForLiquidation(uint256 cratio, uint256 liquidationRatio);
     error NotOwnerNorApproved();
     error OperationFailed();
+    error RedemptionBufferPositionAlreadyExists(uint256 bufferId);
+    error RedemptionBufferPositionManagerAlreadySet(address bufferManager);
+    error InvalidManager(address manager);
 
     event FlashBorrow(address indexed initiator, address indexed to, uint256 amount, uint256 fee);
     event FlashMint(address indexed initiator, address indexed to, uint256 amount, uint256 fee);

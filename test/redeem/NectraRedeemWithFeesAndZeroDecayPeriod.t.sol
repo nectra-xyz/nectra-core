@@ -24,7 +24,7 @@ contract NectraRedeemWithFeesAndZeroDecayPeriodTest is NectraRedeemBaseTest {
             // Note: Open a new position to restore total debt, this test case is strictly measuring the decay of the fee
             // even as redemption volume increase. If the total debt is not restored, the fee will increase due to the ratio
             // between total debt and the redemption amount increasing and seem as if the fee is not decaying.
-            nectra.setSystemInterestRate(0.5 ether);
+            nectra.storeSystemInterestRate(0.5 ether);
             nectra.modifyPosition{value: 2 ether}(0, 2 ether, 1 ether, "");
             assertEq(
                 nectra.getRedemptionFee(1 ether),
