@@ -276,12 +276,12 @@ contract Nectra is
         });
 
         // migrate position to new bucket if interest rate changes and c-ratio is decreasing
-        // if (interestRate != position.interestRate && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
-        //     NectraLib.copy(oldBucket, bucket);
-        //     NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
+        if (interestRate != position.interestRate && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
+            NectraLib.copy(oldBucket, bucket);
+            NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
 
-        //     NectraLib.migrateBucket({position: position, srcBucket: oldBucket, dstBucket: bucket, global: global});
-        // }
+            NectraLib.migrateBucket({position: position, srcBucket: oldBucket, dstBucket: bucket, global: global});
+        }
 
         uint256 finalEffectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
 
