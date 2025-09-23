@@ -8,6 +8,8 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
+import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
+import {NectraCoreStorage} from "src/storage/NectraCoreStorage.sol";
 
 /// @title NectraRedeem
 /// @notice Handles the redemption of NUSD tokens for collateral
@@ -31,8 +33,6 @@ abstract contract NectraRedeem is NectraBase {
 
     event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
 
-    // Migrated to namespaced core storage: see NectraCoreStorage.Layout
-
     /// @notice Redeems NUSD tokens for collateral
     /// @dev Calculates dynamic redemption fee and distributes collateral redemption across buckets
     /// @dev Redemption starts at the lowest bucket and iterates upward
@@ -46,6 +46,8 @@ abstract contract NectraRedeem is NectraBase {
         _requireFlashBorrowUnlocked();
 
         NectraLib.GlobalState memory globalState = _loadGlobalState();
+        NectraCoreStorage.Layout storage core = _core();
+        NectraConfigStorage.Layout storage config = _systemConfig();
 
         uint256 redemptionFeePercentage = _calculateRedemptionFeeAndUpdateBuffer(globalState, amount);
 
@@ -58,8 +60,46 @@ abstract contract NectraRedeem is NectraBase {
             ? redemptionFeePercentage - _systemConfig().REDEMPTION_FEE_TREASURY_THRESHOLD
             : 0;
 
-        uint256 collateralRedeemed =
-            _redeemFromBuckets(globalState, amount, redemptionFeePercentage - treasuryFeePercentage);
+        // redeem from the redemption buffer first
+        uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
+        // will finalize the bucket state
+        (uint256 amountRemaining, uint256 collateralRedeemed) = _redeemBufferBucket(
+            globalState, 
+            amount, 
+            redemptionFeePercentage - treasuryFeePercentage, 
+            collateralPrice, 
+            config.MINIMUM_INTEREST_RATE,
+            core._epochs[config.MINIMUM_INTEREST_RATE]
+        );
+
+        // if amount remaining is greater than 0, redeem from the buckets
+        if (amountRemaining > 0) {
+            (
+                uint256 totalDebt, 
+                uint256 numBuckets, 
+                uint256[] memory bucketDebts, 
+                NectraLib.BucketState[] memory buckets
+            ) = getUpdatedBucketsAndDebt(globalState, collateralPrice, core, config);
+
+            uint256 systemInterestRate = _systemInterestRate();
+
+            // calculate the total debt of buckets below the system interest rate
+            uint256 totalDebtBelowSystemInterestRate = 0;
+            uint256 totalBucketsBelowSystemInterestRate = 0;
+            for (uint256 i = 0; i < numBuckets; i++) {
+                if (buckets[i].interestRate < systemInterestRate) {
+                    totalDebtBelowSystemInterestRate += bucketDebts[i];
+                    totalBucketsBelowSystemInterestRate++;
+                }
+            }
+
+            // if the total debt below the system interest rate is greater than the amount remaining, redeem from the buckets
+            if (totalDebtBelowSystemInterestRate >= amountRemaining) {
+                // redeem buckets below system interest rate pro-rata
+            // collateralRedeemed += _redeemFromBuckets(globalState, amountRemaining, redemptionFeePercentage - treasuryFeePercentage);
+            collateralRedeemed += _redeemFromBuckets(globalState, amountRemaining, redemptionFeePercentage - treasuryFeePercentage, totalBucketsBelowSystemInterestRate);
+            }
+        }
 
         uint256 treasuryCollateralRedeemed = 0;
         if (treasuryFeePercentage > 0) {
@@ -252,6 +292,205 @@ abstract contract NectraRedeem is NectraBase {
         fee = fee.divWad(amount) + baseRate;
 
         return fee;
+    }
+
+    function _redeemBufferBucket(
+        NectraLib.GlobalState memory globalState, 
+        uint256 redemptionAmount,
+        uint256 redemptionFee,
+        uint256 collateralPrice,
+        uint256 interestRate,
+        uint256 epoch
+    ) internal returns (
+        uint256 amountRemaining,
+        uint256 collateralRedeemed
+    ) {
+        amountRemaining = redemptionAmount;
+
+        // load the redemption buffer in the lowest bucket
+        NectraLib.BucketState memory bucket =
+            _loadAndUpdateBucketState(interestRate, epoch, globalState);
+
+        uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
+
+        if (bucketDebt > 0) {
+            // cap the amount of debt to burn to the bucket
+            uint256 burnAmount = amountRemaining < bucketDebt ? amountRemaining : bucketDebt;
+
+            NectraLib.modifyBucket(bucket, globalState, -int256(burnAmount));
+            bucketDebt -= burnAmount;
+
+            // round collateral redeemed down to not give rounding loss to redeemer
+            uint256 collateral = burnAmount.divWad(collateralPrice);
+            // leave redemption fee in the bucket, round up to give rounding to the bucket
+            collateral -= collateral.mulWadUp(redemptionFee);
+
+            // round redeemed collateral per share up to give rounding to the system
+            bucket.accumulatedRedeemedCollateralPerShare += collateral.divWadUp(bucket.totalDebtShares);
+
+            // update this in real-time to ensure the bucket doesn't go insolvent
+            bucket.collateral = NectraMathLib.saturatingAdd(bucket.collateral, -int256(collateral));
+
+            collateralRedeemed += collateral;
+            amountRemaining -= burnAmount;
+            _finalizeBucket(bucket);
+
+            // if the bucket is fully redeemed, increment the epoch and clear the bit in the bit mask
+            if (bucket.globalDebtShares == 0) {
+                // TODO: maybe all of this should all be done in _finalizeBucket?
+                _core()._epochs[interestRate]++;
+                _storeBucketBitMask(interestRate, _bucketBitMask(interestRate) &= ~(1 << (_getBucketIndex(interestRate) % 256)));
+                _storeNumActiveBuckets(_numActiveBuckets() -1);
+            }
+        }
+    }
+
+    function _redeemBucket(
+        NectraLib.GlobalState memory globalState,
+        NectraLib.BucketState memory bucket, 
+        uint256 redemptionAmount,
+        uint256 redemptionFee,
+        uint256 collateralPrice,
+        uint256 interestRate,
+        uint256 bucketDebt
+    ) internal returns (
+        NectraLib.GlobalState memory,
+        uint256 amountRemaining,
+        uint256 collateralRedeemed
+    ) {
+        amountRemaining = redemptionAmount;
+
+        if (bucketDebt > 0) {
+            // cap the amount of debt to burn to the bucket
+            uint256 burnAmount = amountRemaining < bucketDebt ? amountRemaining : bucketDebt;
+
+            NectraLib.modifyBucket(bucket, globalState, -int256(burnAmount));
+            bucketDebt -= burnAmount;
+
+            // round collateral redeemed down to not give rounding loss to redeemer
+            uint256 collateral = burnAmount.divWad(collateralPrice);
+            // leave redemption fee in the bucket, round up to give rounding to the bucket
+            collateral -= collateral.mulWadUp(redemptionFee);
+
+            // round redeemed collateral per share up to give rounding to the system
+            bucket.accumulatedRedeemedCollateralPerShare += collateral.divWadUp(bucket.totalDebtShares);
+
+            // update this in real-time to ensure the bucket doesn't go insolvent
+            bucket.collateral = NectraMathLib.saturatingAdd(bucket.collateral, -int256(collateral));
+
+            collateralRedeemed += collateral;
+            amountRemaining -= burnAmount;
+            _finalizeBucket(bucket);
+
+            // if the bucket is fully redeemed, increment the epoch and clear the bit in the bit mask
+            if (bucket.globalDebtShares == 0) {
+                // TODO: maybe all of this should all be done in _finalizeBucket?
+                _core()._epochs[interestRate]++;
+                _storeBucketBitMask(interestRate, _bucketBitMask(interestRate) &= ~(1 << (_getBucketIndex(interestRate) % 256)));
+                _storeNumActiveBuckets(_numActiveBuckets() -1);
+            }
+        }
+
+        // always pass back the updated global state
+        return (globalState, amountRemaining, collateralRedeemed);
+    }
+
+    function getUpdatedBucketsAndDebt(
+        NectraLib.GlobalState memory globalState, 
+        uint256 collateralPrice,
+        NectraCoreStorage.Layout storage core,
+        NectraConfigStorage.Layout storage config
+    ) internal view returns (
+        uint256 _totalDebt, 
+        uint256 numBuckets,
+        uint256[] memory bucketDebts,
+        NectraLib.BucketState[] memory buckets
+    ) {
+        // initialize the arrays with the maximum number of active buckets
+        bucketDebts = new uint256[](core.numActiveBuckets);
+        buckets = new NectraLib.BucketState[](core.numActiveBuckets);
+
+        uint256 bucketId = 0;
+        uint256 bitMaskIndex = 0;
+        uint256 bitMask = core._bucketBitMasks[bitMaskIndex];
+        uint256 interestRate = config.MINIMUM_INTEREST_RATE;
+
+        // will reach system debt before max interest rate
+        while ((_totalDebt < globalState.debt + globalState.unrealizedLiquidatedDebt) && interestRate <= config.MAXIMUM_INTEREST_RATE) {
+            {
+                uint256 shiftedMask = bitMask >> (bucketId % 256);
+
+                // if there are no more buckets in this set move to the next set
+                if (shiftedMask == 0) {
+                    bitMaskIndex++;
+                    bitMask = core._bucketBitMasks[bitMaskIndex];
+                    bucketId = bitMaskIndex * 256;
+                    interestRate = config.MINIMUM_INTEREST_RATE + bucketId * config.INTEREST_RATE_INCREMENT;
+                    continue;
+                }
+
+                // find the next bucket in the set that has debt
+                {
+                    bucketId += NectraMathLib.findFirstSet(shiftedMask);
+                    interestRate = config.MINIMUM_INTEREST_RATE + bucketId * config.INTEREST_RATE_INCREMENT;
+                }
+            }
+
+            NectraLib.BucketState memory bucket =
+                _loadAndUpdateBucketState(interestRate, core._epochs[interestRate], globalState);
+
+            uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
+
+            if (
+                bucket.collateral.mulWad(collateralPrice).divWad(config.FULL_LIQUIDATION_RATIO + config.OPEN_FEE_PERCENTAGE)
+                    < bucketDebt
+            ) {
+                // if the bucket is likely insolvent, skip it but don't
+                // remove it from the bit mask as if the
+                // price changes it may become solvent again
+                bucketId++;
+            } else if (bucketDebt > 0) {
+                _totalDebt += bucketDebt;
+                bucketDebts[numBuckets] = bucketDebt;
+                buckets[numBuckets] = bucket;
+                numBuckets++;
+            }
+        }
+    }
+
+    function _redeemFromBucketRangeProRata(
+        NectraLib.GlobalState memory globalState, 
+        uint256 amount, 
+        uint256 redemptionFee, 
+        uint256 rangeStart,
+        uint256 rangeEnd,
+        uint256 totalDebtInRange,
+        uint256 collateralPrice,
+        uint256[] memory bucketDebts,
+        NectraLib.BucketState[] memory buckets
+    ) internal returns (uint256 collateralRedeemed) {
+        uint256 amountRemaining = amount;
+        uint256 bucketCollateralRedeemed = 0;
+        uint256 bucketAmountRemaining = 0;
+        
+        for (uint256 i = rangeStart; i < rangeEnd; i++) {
+            uint256 bucketDebt = bucketDebts[i];
+            // round up to ensure the bucket can be fully redeemed
+            uint256 bucketAmount = bucketDebt.mulWadUp(amount).divWadUp(totalDebtInRange);
+     
+            (globalState, bucketAmountRemaining, bucketCollateralRedeemed) = _redeemBucket(
+                globalState, 
+                buckets[i], 
+                bucketAmount, 
+                redemptionFee, 
+                collateralPrice, 
+                buckets[i].interestRate, 
+                bucketDebt
+            );
+            
+            collateralRedeemed += bucketCollateralRedeemed;
+            amountRemaining -= bucketAmount;
+        }
     }
 
     /// @notice Returns the redemption fee percentage for a given amount to redeem

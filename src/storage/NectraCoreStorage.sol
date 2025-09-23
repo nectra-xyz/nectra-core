@@ -7,7 +7,7 @@ library NectraCoreStorage {
     // EIP-7201 namespaced slot. Do not change after deployment.
     bytes32 internal constant STORAGE_SLOT = keccak256("nectra.storage.core");
 
-    struct Globals {
+    struct Global {
         uint256 totalDebtShares;
         uint256 debt;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -39,7 +39,7 @@ library NectraCoreStorage {
         bool flashMintLock;
         uint256 flashBorrowLock;
 
-        Globals _globals;
+        Global _global;
 
         // interestRate => epoch => Bucket
         mapping(uint256 => mapping(uint256 => Bucket)) _buckets;
@@ -53,6 +53,9 @@ library NectraCoreStorage {
         // Redemption fee storage
         uint256 redemptionBuffer;
         uint256 redemptionLastUpdateTimestamp;
+
+        // System variables
+        uint256 numActiveBuckets;
     }
 
     function layout() internal pure returns (Layout storage s) {

@@ -18,7 +18,7 @@ contract NectraBase {
     /// @param accumulatedLiquidatedCollateralPerShare Accumulated collateral from liquidations per share
     /// @param accumulatedLiquidatedDebtPerShare Accumulated debt from liquidations per share
     /// @param unrealizedLiquidatedDebt In-flight debt from liquidations yet to be realized
-    struct Globals {
+    struct Global {
         uint256 totalDebtShares;
         uint256 debt;
         uint256 accumulatedLiquidatedCollateralPerShare;
@@ -80,9 +80,9 @@ contract NectraBase {
         return NectraCoreStorage.layout();
     }
 
-    /// @notice Constructor arguments for initializing the contract
-    /// @param nectraNFTAddress Address of the NectraNFT contract
-    /// @param nusdTokenAddress Address of the NUSD token contract
+    /// @notice Initializer arguments for configuring the system
+    /// @param nectraNFTAddress Address of the NectraNFT system
+    /// @param nusdTokenAddress Address of the NUSD token system
     /// @param oracleAddress Address of the price oracle
     /// @param minimumCollateral Minimum amount of collateral required
     /// @param minimumDebt Minimum amount of debt allowed
@@ -132,7 +132,7 @@ contract NectraBase {
         uint256 flashBorrowFee;
     }
 
-    /// @param args Constructor arguments containing all configuration parameters
+    /// @param args Initializer arguments containing all configuration parameters
     function setSystemParams(SystemParams memory args) internal {
         NectraConfigStorage.Layout storage c = _systemConfig();
         c.NECTRA_NFT_ADDRESS = args.nectraNFTAddress;
@@ -183,13 +183,13 @@ contract NectraBase {
     /// @notice Loads the current global state
     /// @return Global state of the system
     function _loadGlobalState() internal view returns (NectraLib.GlobalState memory) {
-        NectraCoreStorage.Globals storage globals = _core()._globals;
+        NectraCoreStorage.Global storage global = _core()._global;
         return NectraLib.GlobalState({
-            totalDebtShares: globals.totalDebtShares,
-            debt: globals.debt,
-            accumulatedLiquidatedCollateralPerShare: globals.accumulatedLiquidatedCollateralPerShare,
-            accumulatedLiquidatedDebtPerShare: globals.accumulatedLiquidatedDebtPerShare,
-            unrealizedLiquidatedDebt: globals.unrealizedLiquidatedDebt,
+            totalDebtShares: global.totalDebtShares,
+            debt: global.debt,
+            accumulatedLiquidatedCollateralPerShare: global.accumulatedLiquidatedCollateralPerShare,
+            accumulatedLiquidatedDebtPerShare: global.accumulatedLiquidatedDebtPerShare,
+            unrealizedLiquidatedDebt: global.unrealizedLiquidatedDebt,
             fees: 0
         });
     }
@@ -247,19 +247,19 @@ contract NectraBase {
         view
         returns (NectraLib.BucketState memory, NectraLib.GlobalState memory)
     {
-        NectraCoreStorage.Globals storage globals = _core()._globals;
+        NectraCoreStorage.Global storage globalStorage = _core()._global;
         NectraLib.GlobalState memory global = NectraLib.GlobalState({
-            totalDebtShares: globals.totalDebtShares,
-            debt: globals.debt,
-            accumulatedLiquidatedCollateralPerShare: globals.accumulatedLiquidatedCollateralPerShare,
-            accumulatedLiquidatedDebtPerShare: globals.accumulatedLiquidatedDebtPerShare,
-            unrealizedLiquidatedDebt: globals.unrealizedLiquidatedDebt,
+            totalDebtShares: globalStorage.totalDebtShares,
+            debt: globalStorage.debt,
+            accumulatedLiquidatedCollateralPerShare: globalStorage.accumulatedLiquidatedCollateralPerShare,
+            accumulatedLiquidatedDebtPerShare: globalStorage.accumulatedLiquidatedDebtPerShare,
+            unrealizedLiquidatedDebt: globalStorage.unrealizedLiquidatedDebt,
             fees: 0
         });
 
-        NectraLib.BucketState memory bucket = _loadAndUpdateBucketState(interestRate, epoch, global);
+        NectraLib.BucketState memory bucketState = _loadAndUpdateBucketState(interestRate, epoch, global);
 
-        return (bucket, global);
+        return (bucketState, global);
     }
 
     /// @notice Loads and updates the state of a position
@@ -325,14 +325,19 @@ contract NectraBase {
         NectraLib.GlobalState memory global
     ) internal {
         uint256 bucketBitMask = _bucketBitMask(position.interestRate);
+        uint256 numActiveBuckets = _numActiveBuckets();
         if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) > 0) {
             // set the bit in the bucket bit mask
             bucketBitMask |= (1 << (_getBucketIndex(position.interestRate) % 256));
+            // TODO this is a bug, we should only increment when the bucket is new.
+            // numActiveBuckets++;
         } else {
             // clear the bit in the bucket bit mask
             bucketBitMask &= ~(1 << (_getBucketIndex(position.interestRate) % 256));
+            numActiveBuckets--;
         }
         _storeBucketBitMask(position.interestRate, bucketBitMask);
+        _storeNumActiveBuckets(numActiveBuckets);
 
         _core()._positions[position.tokenId] = NectraCoreStorage.Position({
             interestRate: position.interestRate,
@@ -361,7 +366,7 @@ contract NectraBase {
     /// @dev Updates global storage and mints fees to the fee recipient if any are accumulated
     /// @param global The final global state to store
     function _finalizeGlobal(NectraLib.GlobalState memory global) internal {
-        NectraCoreStorage.Globals storage g = _core()._globals;
+        NectraCoreStorage.Global storage g = _core()._global;
         g.totalDebtShares = global.totalDebtShares;
         g.debt = global.debt;
         g.accumulatedLiquidatedCollateralPerShare = global.accumulatedLiquidatedCollateralPerShare;
@@ -418,6 +423,18 @@ contract NectraBase {
     /// @param bitMask The bit mask to store
     function _storeBucketBitMask(uint256 interestRate, uint256 bitMask) internal {
         _core()._bucketBitMasks[_getBucketBitMaskIndex(interestRate)] = bitMask;
+    }
+
+    /// @notice Gets the number of active buckets
+    /// @return The number of active buckets
+    function _numActiveBuckets() internal view returns (uint256) {
+        return _core().numActiveBuckets;
+    }
+
+    /// @notice Sets the number of active buckets
+    /// @param numActiveBuckets The number of active buckets to set
+    function _storeNumActiveBuckets(uint256 numActiveBuckets) internal {
+        _core().numActiveBuckets = numActiveBuckets;
     }
 
     /// @notice Gets the system set interest rate

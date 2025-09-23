@@ -245,6 +245,11 @@ contract Nectra is
             _requireFlashBorrowUnlocked();
         }
 
+        // if bucket is new, increment the num active buckets
+        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && borrowOrRepay > 0) {
+            _storeNumActiveBuckets(_numActiveBuckets() + 1);
+        }
+
         uint256 fixedRateOpenFee = 0;
 
         // calculate fixed rate fee on new debt
@@ -275,6 +280,8 @@ contract Nectra is
             debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
 
+        // TODO: temporarily commented out for the buffer simulation. It will be added when the permissioned
+        // buffer positions are allowed at the 0% bucket
         // migrate position to new bucket if interest rate changes and c-ratio is decreasing
         if (interestRate != position.interestRate && (borrowOrRepay > 0 || depositOrWithdraw < 0)) {
             NectraLib.copy(oldBucket, bucket);

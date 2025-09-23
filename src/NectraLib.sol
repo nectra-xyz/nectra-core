@@ -182,6 +182,7 @@ library NectraLib {
 
     /// @notice Calculates total debt for a bucket
     /// @dev Converts bucket's global debt shares to actual debt amount
+    /// @dev Should only be used on updated global and bucket states
     /// @param bucket The bucket to calculate debt for
     /// @param global The global state
     /// @param rounding The rounding mode to use
@@ -196,6 +197,7 @@ library NectraLib {
 
     /// @notice Calculates debt for a position
     /// @dev Computes position's debt based on its shares and bucket state
+    /// @dev Should only be used on updated global, bucket and position states
     /// @param position The position to calculate debt for
     /// @param bucket The bucket containing the position
     /// @param global The global state
