@@ -16,10 +16,10 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         super.setUp();
 
         // fill lowest bucket with position that will remain solvent
-        nectra.setSystemInterestRate(systemParams.minimumInterestRate);
+        nectra.storeSystemInterestRate(systemParams.minimumInterestRate);
         nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(25 ether), "");
         // fill upper bucket with position that will remain solvent
-        nectra.setSystemInterestRate(0.05 ether);
+        nectra.storeSystemInterestRate(0.05 ether);
         nectra.modifyPosition{value: 100 ether}(0, int256(100 ether), int256(30 ether), "");
 
         nectraUSD.approve(address(nectra), type(uint256).max);
@@ -33,7 +33,7 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         uint256 targetPrice = systemParams.fullLiquidationRatio.mulWad(1 ether + systemParams.openFeePercentage).mulWad(maxDebt).divWad(collateralAmount);
 
         // fill insolvent bucket with position that will be insolvent
-        nectra.setSystemInterestRate(INSOLVENT_BUCKET);
+        nectra.storeSystemInterestRate(INSOLVENT_BUCKET);
         nectra.modifyPosition{ value: collateralAmount }(0, int256(collateralAmount), int256(maxDebt), "");
 
         // make bucket insolvent by dropping price

@@ -396,6 +396,7 @@ contract NectraBase {
     }
 
     /// @notice Calculates the index of a bucket based on its interest rate
+    /// @dev This will underflow when the interest rate is 0 and min > 0
     /// @param interestRate The interest rate to calculate the bucket index for
     /// @return The calculated bucket index
     function _getBucketIndex(uint256 interestRate) internal view returns (uint256) {
@@ -445,12 +446,36 @@ contract NectraBase {
 
     /// @notice Sets the system set interest rate
     /// @param systemInterestRate The system set interest rate to set
-    function _setSystemInterestRate(uint256 systemInterestRate) internal {
+    function _storeSystemInterestRate(uint256 systemInterestRate) internal {
         require(systemInterestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InterestRateTooHigh(systemInterestRate, _systemConfig().MAXIMUM_INTEREST_RATE));
         require(systemInterestRate >= _systemConfig().MINIMUM_INTEREST_RATE, InterestRateTooLow(systemInterestRate, _systemConfig().MINIMUM_INTEREST_RATE));
         require(systemInterestRate % _systemConfig().INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
 
         _systemConfig().SYSTEM_INTEREST_RATE = systemInterestRate;
+    }
+
+    /// @notice Gets the redemption buffer position id
+    /// @return The redemption buffer position id
+    function _redemptionBufferPositionId() internal view returns (uint256) {
+        return _core().redemptionBufferPositionId;
+    }
+
+    /// @notice Gets the redemption buffer position manager
+    /// @return The redemption buffer position manager
+    function _redemptionBufferPositionManager() internal view returns (address) {
+        return _core().redemptionBufferPositionManager;
+    }
+
+    /// @notice Stores the redemption buffer position id
+    /// @param redemptionBufferPositionId The redemption buffer position id to store
+    function _storeRedemptionBufferPositionId(uint256 redemptionBufferPositionId) internal {
+        _core().redemptionBufferPositionId = redemptionBufferPositionId;
+    }
+
+    /// @notice Stores the redemption buffer position manager
+    /// @param redemptionBufferPositionManager The redemption buffer position manager to store
+    function _storeRedemptionBufferPositionManager(address redemptionBufferPositionManager) internal {
+        _core().redemptionBufferPositionManager = redemptionBufferPositionManager;
     }
 
     /// @notice Gets the collateral price with circuit breaker check

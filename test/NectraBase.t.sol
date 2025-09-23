@@ -35,7 +35,7 @@ abstract contract NectraBaseTest is Test {
         minimumDebt: 0.1 ether,
         systemInterestRate: 0.0025 ether, // 0.25%
         maximumInterestRate: 1 ether,
-        minimumInterestRate: 0.0001 ether, // 0%
+        minimumInterestRate: 0, // 0%
         interestRateIncrement: 0.0001 ether, // 0.01%
         liquidationRatio: 1.2 ether,
         liquidatorRewardPercentage: 0.85 ether,

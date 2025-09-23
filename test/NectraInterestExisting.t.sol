@@ -8,16 +8,16 @@ contract NectraInterestExistingTest is NectraInterestTest {
         super.setUp();
 
         // Open positions with different interest rates
-        nectra.setSystemInterestRate(0.1 ether);
+        nectra.storeSystemInterestRate(0.1 ether);
         nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
-        nectra.setSystemInterestRate(0.1 ether);
+        nectra.storeSystemInterestRate(0.1 ether);
         nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 33 ether, "");
-        nectra.setSystemInterestRate(0.2 ether);
+        nectra.storeSystemInterestRate(0.2 ether);
         nectra.modifyPosition{value: 800 ether}(0, 800 ether, 500 ether, "");
-        nectra.setSystemInterestRate(0.3 ether);
+        nectra.storeSystemInterestRate(0.3 ether);
         nectra.modifyPosition{value: 600 ether}(0, 600 ether, 200 ether, "");
 
-        nectra.setSystemInterestRate(0.1 ether);
+        nectra.storeSystemInterestRate(0.1 ether);
 
         vm.warp(vm.getBlockTimestamp() + 60 days);
     }

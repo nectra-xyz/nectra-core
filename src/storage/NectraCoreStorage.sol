@@ -53,7 +53,9 @@ library NectraCoreStorage {
         // Redemption fee storage
         uint256 redemptionBuffer;
         uint256 redemptionLastUpdateTimestamp;
-
+        // Redemption buffer position storage
+        uint256 redemptionBufferPositionId;
+        address redemptionBufferPositionManager;
         // System variables
         uint256 numActiveBuckets;
     }

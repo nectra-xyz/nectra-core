@@ -41,13 +41,13 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
 
         for (uint256 i = 0; i < interestRates.length; i++) {
-            nectra.setSystemInterestRate(interestRates[i]);
+            nectra.storeSystemInterestRate(interestRates[i]);
             (tokens[i],,,,) = nectra.modifyPosition{value: collaterals[i]}(0, int256(collaterals[i]), int256(debts[i]), "");
         }
 
         nectraUSD.approve(address(nectra), type(uint256).max);
         // set system interest rate to default
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
     }
 
     // Flash mint and flash borrow should be locked
@@ -295,7 +295,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         oracle.setCurrentPrice(collateralPrice);
 
         // open new position in different bucket
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
         (uint256 tokenId2,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
 
         // check that the position is reopened without redistribution of liquidated collateral or debt

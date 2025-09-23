@@ -284,14 +284,14 @@ contract RedemptionBufferSimulation is Test {
         uint256 currentSysInterestRate = nectra.getSystemInterestRate();
 
         // open position at specified interest rate
-        nectra.setSystemInterestRate(rate);
+        nectra.storeSystemInterestRate(rate);
         
         vm.deal(who, collateralCBTC);
         vm.prank(who);
           (uint256 tokenId,, , ,) = nectra.modifyPosition{value: collateralCBTC}(0, int256(collateralCBTC), debtNUSD, "");
         
         // restore system interest rate
-        nectra.setSystemInterestRate(currentSysInterestRate);
+        nectra.storeSystemInterestRate(currentSysInterestRate);
 
         return tokenId;
     }

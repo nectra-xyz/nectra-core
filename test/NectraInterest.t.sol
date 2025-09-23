@@ -16,7 +16,7 @@ contract NectraInterestTest is NectraBaseTest {
         systemParams.openFeePercentage = 0;
         super.setUp();
 
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
 
         nectraUSD.approve(address(nectra), type(uint256).max);
     }

@@ -47,7 +47,7 @@ contract NectraStorageTest is NectraBaseTest {
         // Open a position and borrow so that we can redeem
         uint256 minRate = systemParams.minimumInterestRate;
         vm.deal(address(this), address(this).balance + 2 ether);
-        nectra.setSystemInterestRate(minRate);
+        nectra.storeSystemInterestRate(minRate);
         (uint256 tokenId,, , ,) = nectra.modifyPosition{value: 2 ether}(0, int256(2 ether), int256(1 ether), "");
         assertGt(tokenId, 0, "position not created");
 
@@ -67,7 +67,7 @@ contract NectraStorageTest is NectraBaseTest {
         uint256 collateral = 1 ether;
         uint256 debt = 0.4 ether;
         vm.deal(address(this), address(this).balance + collateral);
-        nectra.setSystemInterestRate(rate);
+        nectra.storeSystemInterestRate(rate);
         (uint256 tokenId,, , ,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
 
         (NectraLib.PositionState memory p, NectraLib.BucketState memory b, NectraLib.GlobalState memory g) =
@@ -84,7 +84,7 @@ contract NectraStorageTest is NectraBaseTest {
     }
 
     function test_Upgrade_PreservesConfigAndState() public {
-        nectra.setSystemInterestRate(systemParams.minimumInterestRate);
+        nectra.storeSystemInterestRate(systemParams.minimumInterestRate);
 
         // Capture pre-upgrade config
         NectraBase.SystemParams memory beforeCfg = nectra.getConfig();

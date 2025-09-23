@@ -38,19 +38,19 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     function test_should_fail_for_invalid_low_interest_rate() public {
         vm.expectRevert(abi.encodeWithSelector(INectra.InterestRateTooLow.selector, 0 ether, systemParams.minimumInterestRate));
-        nectra.setSystemInterestRate(0 ether);
+        nectra.storeSystemInterestRate(0 ether);
     }
 
     function test_should_fail_for_invalid_high_interest_rate() public {
         vm.expectRevert(
             abi.encodeWithSelector(INectra.InterestRateTooHigh.selector, 101 ether, systemParams.maximumInterestRate)
         );
-        nectra.setSystemInterestRate(101 ether);
+        nectra.storeSystemInterestRate(101 ether);
     }
 
     function test_should_fail_for_invalid_interest_rate_increment() public {
         vm.expectRevert(INectra.InvalidInterestRate.selector);
-        nectra.setSystemInterestRate(0.051234 ether);
+        nectra.storeSystemInterestRate(0.051234 ether);
     }
 
     function test_should_fail_for_below_minimum_deposit() public {
@@ -252,7 +252,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     function test_should_not_change_interest_rate_when_debt_is_decreasing() public {
         // set new interest rate
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
         // position owner can decrease debt
         nectraUSD.approve(address(nectra), 1);
@@ -268,7 +268,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     function test_should_not_change_interest_rate_when_collateral_is_increasing() public {
         // set new interest rate
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
         // position owner can increase collateral
         nectra.modifyPosition{ value: 1 }(defaultTokenId, 1, 0, "");
@@ -283,7 +283,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
         function test_should_change_interest_rate_when_debt_is_increasing() public {
         // set new interest rate
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
         // position owner can increase debt
         nectra.modifyPosition(defaultTokenId, 0, 1, "");
@@ -298,7 +298,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
 
     function test_should_change_interest_rate_when_collateral_is_decreasing() public {
         // set new interest rate
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
 
         // position owner can decrease collateral
         nectra.modifyPosition(defaultTokenId, -1, 0, "");
@@ -400,7 +400,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 newInterestRate = 0.005 ether;
 
         // change system IR to 0.5% bucket
-        nectra.setSystemInterestRate(newInterestRate);
+        nectra.storeSystemInterestRate(newInterestRate);
 
         // create new position in system IR bucket with default position
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
@@ -575,7 +575,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 interestRate = 0.1 ether;
 
         // change system IR to 0.5% bucket
-        nectra.setSystemInterestRate(interestRate);
+        nectra.storeSystemInterestRate(interestRate);
 
         // create new position in 5% bucket with default position
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
@@ -758,7 +758,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         _checkPosition(tokenId, collateralAfterRedemption, debtAfterRedemption, defaultInterestRate);
 
         // increase interest rate (must increase debt)
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
         nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm position is correct after increasing interest rate
@@ -771,14 +771,14 @@ contract NectraModifyPositionTest is NectraBaseTest {
     }
 
     function test_migrating_to_a_bucket_with_a_new_epoch_should_work() public {
-        nectra.setSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
+        nectra.storeSystemInterestRate(defaultInterestRate + systemParams.interestRateIncrement);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // fully redeem the first bucket
         _createAndFullyRedeemPosition();
 
         // migrate position to new epoch (must increase debt)
-        nectra.setSystemInterestRate(defaultInterestRate);
+        nectra.storeSystemInterestRate(defaultInterestRate);
         nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm position is correct after migration
@@ -789,7 +789,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         uint256 initialBucket = defaultInterestRate + 0.5 ether;
         uint256 newBucket = initialBucket + systemParams.interestRateIncrement;
         
-        nectra.setSystemInterestRate(initialBucket);
+        nectra.storeSystemInterestRate(initialBucket);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(defaultDebt), "");
 
         // get both bucket collateral
@@ -801,7 +801,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
         assertEq(newBucketState.collateral, 0, "New bucket collateral is incorrect");
 
         // migrate position to new bucket (must increase debt)
-        nectra.setSystemInterestRate(newBucket);
+        nectra.storeSystemInterestRate(newBucket);
         nectra.modifyPosition(tokenId, 0, 1, "");
 
         // confirm bucket collateral is correct after migration
