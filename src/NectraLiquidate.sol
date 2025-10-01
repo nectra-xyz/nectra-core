@@ -7,6 +7,7 @@ import {NectraLib} from "src/NectraLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
+import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
 
 
 /// @title NectraLiquidate
@@ -42,8 +43,17 @@ abstract contract NectraLiquidate is NectraBase {
     /// @param liquidator Address that performed the liquidation
     /// @param liquidatorReward Fixed reward given to liquidator
     event PositionFullyLiquidated(
-        uint256 indexed tokenId, uint256 collateral, uint256 debt, address indexed liquidator, uint256 liquidatorReward
+        uint256 indexed tokenId, 
+        uint256 collateral, 
+        uint256 debt, 
+        address indexed liquidator, 
+        uint256 liquidatorReward
     );
+
+    /// @notice Emitted when a liquidation fee is paid to fee recipient
+    /// @dev Used for tracking liquidation revenue
+    /// @param amount Amount of collateral paid as fee
+    event LiquidationFeePaid(uint256 amount);
 
     /// @notice Partially liquidates an undercollateralized position
     /// @dev Repays debt and takes collateral as penalty, with a portion going to the liquidator
@@ -57,6 +67,8 @@ abstract contract NectraLiquidate is NectraBase {
             NectraLib.GlobalState memory global
         ) = _loadAndUpdateState(tokenId);
 
+        NectraConfigStorage.Layout storage config = _systemConfig();
+
         uint256 positionDebt = NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
         uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
 
@@ -64,18 +76,18 @@ abstract contract NectraLiquidate is NectraBase {
             uint256 cratio =
                 positionDebt > 0 ? position.collateral.mulWad(collateralPrice).divWad(positionDebt) : type(uint256).max;
 
-            require(cratio <= _systemConfig().LIQUIDATION_RATIO, NotEligibleForLiquidation(cratio, _systemConfig().LIQUIDATION_RATIO));
+            require(cratio <= config.LIQUIDATION_RATIO, NotEligibleForLiquidation(cratio, config.LIQUIDATION_RATIO));
         }
 
         // calculate amount to fix the position
-        uint256 amountToFix = (positionDebt.mulWadUp(_systemConfig().ISSUANCE_RATIO) - position.collateral.mulWad(collateralPrice))
-            .divWadUp(_systemConfig().ISSUANCE_RATIO - 1 ether);
+        uint256 amountToFix = (positionDebt.mulWadUp(config.ISSUANCE_RATIO) - position.collateral.mulWad(collateralPrice))
+            .divWadUp(config.ISSUANCE_RATIO - 1 ether);
 
         // calculate the amount of collateral to redeem
         uint256 collateralToRedeem = amountToFix.divWadUp(collateralPrice);
 
-        uint256 penalty = amountToFix.mulWadUp(_systemConfig().LIQUIDATION_PENALTY_PERCENTAGE);
-        uint256 penaltyCollateral = penalty.divWadUp(collateralPrice).mulWadUp(_systemConfig().ISSUANCE_RATIO);
+        uint256 penalty = amountToFix.mulWadUp(config.LIQUIDATION_PENALTY_PERCENTAGE);
+        uint256 penaltyCollateral = penalty.divWadUp(collateralPrice).mulWadUp(config.ISSUANCE_RATIO);
 
         require(collateralToRedeem + penaltyCollateral <= position.collateral, InsufficientCollateral());
 
@@ -91,23 +103,27 @@ abstract contract NectraLiquidate is NectraBase {
         _finalize(position, bucket, global);
 
         // burn
-        NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).burn(msg.sender, amountToFix + penalty);
+        NUSDToken(config.NUSD_TOKEN_ADDRESS).burn(msg.sender, amountToFix + penalty);
 
         uint256 liquidatorReward = FixedPointMathLib.min(
-            penaltyCollateral.mulWad(_systemConfig().LIQUIDATOR_REWARD_PERCENTAGE),
-            _systemConfig().MAX_LIQUIDATOR_REWARD.divWad(collateralPrice)
+            penaltyCollateral.mulWad(config.LIQUIDATOR_REWARD_PERCENTAGE),
+            config.MAX_LIQUIDATOR_REWARD.divWad(collateralPrice)
         );
 
         address(msg.sender).safeTransferETH(collateralToRedeem + liquidatorReward);
 
-        _systemConfig().FEE_RECIPIENT_ADDRESS.safeTransferETH(penaltyCollateral - liquidatorReward);
+        uint256 liquidationFee = penaltyCollateral - liquidatorReward;
+        if (liquidationFee > 0) {
+            config.FEE_RECIPIENT_ADDRESS.safeTransferETH(liquidationFee);
+            emit LiquidationFeePaid(liquidationFee);
+        }
 
         emit PositionLiquidated(
             tokenId,
             collateralToRedeem + liquidatorReward,
             amountToFix + penalty,
             liquidatorReward,
-            penaltyCollateral - liquidatorReward,
+            liquidationFee,
             msg.sender
         );
     }
@@ -125,6 +141,8 @@ abstract contract NectraLiquidate is NectraBase {
             NectraLib.GlobalState memory global
         ) = _loadAndUpdateState(tokenId);
 
+        NectraConfigStorage.Layout storage config = _systemConfig();
+
         uint256 positionDebt = NectraLib.calculatePositionDebt(position, bucket, global, NectraMathLib.Rounding.Up);
         {
             uint256 collateralPrice = _collateralPriceWithCircuitBreaker();
@@ -132,8 +150,8 @@ abstract contract NectraLiquidate is NectraBase {
                 positionDebt > 0 ? position.collateral.mulWad(collateralPrice).divWad(positionDebt) : type(uint256).max;
 
             require(
-                cratio <= _systemConfig().FULL_LIQUIDATION_RATIO,
-                NotEligibleForFullLiquidation(cratio, _systemConfig().FULL_LIQUIDATION_RATIO)
+                cratio <= config.FULL_LIQUIDATION_RATIO,
+                NotEligibleForFullLiquidation(cratio, config.FULL_LIQUIDATION_RATIO)
             );
         }
 
@@ -146,7 +164,7 @@ abstract contract NectraLiquidate is NectraBase {
         global.accumulatedLiquidatedDebtPerShare +=
             (liquidatedDebt + _systemConfig().FULL_LIQUIDATOR_FEE).divWad(global.totalDebtShares);
         global.accumulatedLiquidatedCollateralPerShare += liquidatedCollateral.divWad(global.totalDebtShares);
-        global.unrealizedLiquidatedDebt += liquidatedDebt + _systemConfig().FULL_LIQUIDATOR_FEE;
+        global.unrealizedLiquidatedDebt += liquidatedDebt + config.FULL_LIQUIDATOR_FEE;
 
         position = NectraLib.PositionState({
             tokenId: tokenId,
@@ -160,8 +178,8 @@ abstract contract NectraLiquidate is NectraBase {
 
         _finalize(position, bucket, global);
 
-        NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(msg.sender, _systemConfig().FULL_LIQUIDATOR_FEE);
+        NUSDToken(config.NUSD_TOKEN_ADDRESS).mint(msg.sender, config.FULL_LIQUIDATOR_FEE);
 
-        emit PositionFullyLiquidated(tokenId, liquidatedCollateral, liquidatedDebt, msg.sender, _systemConfig().FULL_LIQUIDATOR_FEE);
+        emit PositionFullyLiquidated(tokenId, liquidatedCollateral, liquidatedDebt, msg.sender, config.FULL_LIQUIDATOR_FEE);
     }
 }

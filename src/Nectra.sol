@@ -50,8 +50,11 @@ contract Nectra is
     /// @param tokenId ID of the position being modified
     /// @param depositOrWithdraw Amount of collateral deposited (positive) or withdrawn (negative)
     /// @param borrowOrRepay Amount of debt borrowed (positive) or repaid (negative)
+    /// @param collateral Total collateral in the position after modification
+    /// @param debt Total debt in the position after modification
     /// @param interestRate New interest rate for the position
     /// @param operator Address that initiated the modification
+    /// @param fee Fees paid for the modification
     event ModifyPosition(
         uint256 indexed tokenId,
         int256 depositOrWithdraw,
@@ -59,12 +62,22 @@ contract Nectra is
         uint256 collateral,
         uint256 debt,
         uint256 interestRate,
-        address indexed operator
+        address indexed operator,
+        uint256 fee
     );
 
     /// @notice Emitted when the system set interest rate is set
     /// @param interestRate The system set interest rate
     event SystemInterestRateSet(uint256 interestRate);
+
+    /// @notice Emitted when the redemption buffer position id is set
+    /// @param redemptionBufferPositionId The redemption buffer position id
+    event RedemptionBufferPositionIdSet(uint256 redemptionBufferPositionId);
+
+    /// @notice Emitted when the redemption buffer position manager is set
+    /// @param redemptionBufferPositionManager The redemption buffer position manager
+    event RedemptionBufferPositionManagerSet(address redemptionBufferPositionManager);
+    
 
     /// @param params System parameters defined in NectraBase
     function initialize(SystemParams memory params) public initializer {
@@ -141,12 +154,13 @@ contract Nectra is
         }
 
         // if bucket is new, increment the num active buckets
-        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && borrowOrRepay > 0) {
+        if (bucket.globalDebtShares == 0 && borrowOrRepay > 0) {
             _storeNumActiveBuckets(_numActiveBuckets() + 1);
         }
 
         uint256 effectiveDebt;
-        (depositOrWithdraw, borrowOrRepay,, effectiveDebt) =
+        uint256 fee;
+        (depositOrWithdraw, borrowOrRepay,, effectiveDebt, fee) =
             _modifyPosition(position, bucket, oldBucket, global, depositOrWithdraw, borrowOrRepay, interestRate);
 
         require(
@@ -183,7 +197,8 @@ contract Nectra is
             position.collateral,
             effectiveDebt,
             interestRate,
-            msg.sender
+            msg.sender,
+            fee
         );
 
         return (position.tokenId, depositOrWithdraw, borrowOrRepay, position.collateral, effectiveDebt);
@@ -224,11 +239,6 @@ contract Nectra is
         _storeRedemptionBufferPositionId(tokenId);
         _storeRedemptionBufferPositionManager(manager);
 
-        // if bucket is new, increment the num active buckets
-        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && debt > 0) {
-            _storeNumActiveBuckets(_numActiveBuckets() + 1);
-        }
-
         // create new position
         (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
         position = NectraLib.PositionState({
@@ -241,10 +251,12 @@ contract Nectra is
             bucketEpoch: bucket.epoch
         });
 
-        uint256 effectiveDebt;
-        int256 deposit;
-        int256 borrow;
-        (deposit, borrow,, effectiveDebt) =
+        // if bucket is new, increment the num active buckets
+        if (bucket.globalDebtShares == 0 && debt > 0) {
+            _storeNumActiveBuckets(_numActiveBuckets() + 1);
+        }
+
+        (int256 deposit, int256 borrow,, uint256 effectiveDebt, uint256 fee) =
             _modifyPosition(position, bucket, oldBucket, global, int256(collateral), int256(debt), interestRate);
 
         if (oldBucket.lastUpdateTime != 0) {
@@ -264,7 +276,8 @@ contract Nectra is
             position.collateral,
             effectiveDebt,
             interestRate,
-            msg.sender
+            msg.sender,
+            fee
         );
 
         return (tokenId, deposit, borrow, position.collateral, effectiveDebt);
@@ -279,10 +292,11 @@ contract Nectra is
     /// @return borrowOrRepay Actual amount of nUSD that would be borrowed or repaid
     /// @return collateral The total collateral in the position after modification
     /// @return effectiveDebt The total effective debt of the position after modification
+    /// @return fee Fixed rate open fee
     function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay)
         external
         view
-        returns (int256, int256, uint256, uint256)
+        returns (int256, int256, uint256, uint256, uint256)
     {
         NectraLib.GlobalState memory global;
         NectraLib.BucketState memory bucket;
@@ -327,6 +341,7 @@ contract Nectra is
     /// @return borrowOrRepay Actual amount of nUSD to borrow or repay
     /// @return collateral Total collateral in the position after modification
     /// @return effectiveDebt Total effective debt in the position after modification
+    /// @return fee Fixed rate open fee
     function _modifyPosition(
         NectraLib.PositionState memory position,
         NectraLib.BucketState memory bucket,
@@ -335,7 +350,7 @@ contract Nectra is
         int256 depositOrWithdraw,
         int256 borrowOrRepay,
         uint256 interestRate
-    ) internal view returns (int256, int256, uint256, uint256) {
+    ) internal view returns (int256, int256, uint256, uint256, uint256) {
         if (depositOrWithdraw < 0) {
             // Cannot withdraw collateral if a flash borrow is active
             _requireFlashBorrowUnlocked();
@@ -415,7 +430,7 @@ contract Nectra is
             require(cratio >= _systemConfig().ISSUANCE_RATIO, InvalidCollateralizationRatio(cratio, _systemConfig().ISSUANCE_RATIO));
         }
 
-        return (depositOrWithdraw, borrowOrRepay, position.collateral, finalEffectiveDebt);
+        return (depositOrWithdraw, borrowOrRepay, position.collateral, finalEffectiveDebt, fixedRateOpenFee);
     }
 
     /// @notice Updates an existing position's accounting and finalizes state
@@ -476,6 +491,8 @@ contract Nectra is
     /// @param redemptionBufferPositionId The redemption buffer position id to store
     function storeRedemptionBufferPositionId(uint256 redemptionBufferPositionId) external onlyOwner {
         _storeRedemptionBufferPositionId(redemptionBufferPositionId);
+
+        emit RedemptionBufferPositionIdSet(redemptionBufferPositionId);
     }
 
     /// @notice Stores the redemption buffer position manager
@@ -483,6 +500,8 @@ contract Nectra is
     /// @param redemptionBufferPositionManager The redemption buffer position manager to store
     function storeRedemptionBufferPositionManager(address redemptionBufferPositionManager) external onlyOwner {
         _storeRedemptionBufferPositionManager(redemptionBufferPositionManager);
+
+        emit RedemptionBufferPositionManagerSet(redemptionBufferPositionManager);
     }
 
     /// @notice Authorizes the upgrade of the implementation contract

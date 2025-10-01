@@ -27,8 +27,7 @@ interface INectra {
     error RedemptionBufferPositionManagerAlreadySet(address bufferManager);
     error InvalidManager(address manager);
 
-    event FlashBorrow(address indexed initiator, address indexed to, uint256 amount, uint256 fee);
-    event FlashMint(address indexed initiator, address indexed to, uint256 amount, uint256 fee);
+    // Nectra Core
     event ModifyPosition(
         uint256 indexed tokenId,
         int256 depositOrWithdraw,
@@ -36,6 +35,48 @@ interface INectra {
         uint256 interestRate,
         address indexed operator
     );
+    event SystemInterestRateSet(uint256 interestRate);
+    event RedemptionBufferPositionIdSet(uint256 redemptionBufferPositionId);
+    event RedemptionBufferPositionManagerSet(address redemptionBufferPositionManager);
+    event GlobalFeesMinted(uint256 amount);
+
+   function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay)
+        external
+        view
+    returns (int256, int256, uint256, uint256, uint256);
+    function modifyPosition(
+        uint256 tokenId,
+        int256 depositOrWithdraw,
+        int256 borrowOrRepay,
+        bytes memory permit
+    ) external payable returns (uint256, int256, int256, uint256, uint256);
+    function createRedemptionBufferPosition(uint256 collateral, uint256 debt, address manager) external 
+        returns (uint256, int256, int256, uint256, uint256);
+    function updatePosition(uint256 tokenId) external;
+    function updateBucket(uint256 interestRate) external;
+    function getSystemInterestRate() external view returns (uint256);
+    function storeSystemInterestRate(uint256 interestRate) external;
+    function getRedemptionBufferPositionId() external view returns (uint256);
+    function getRedemptionBufferPositionManager() external view returns (address);
+    function storeRedemptionBufferPositionId(uint256 redemptionBufferPositionId) external;
+    function storeRedemptionBufferPositionManager(address redemptionBufferPositionManager) external;
+    
+    // NectraFlash
+    event FlashBorrow(address indexed initiator, address indexed to, uint256 amount, uint256 fee);
+    event FlashMint(address indexed initiator, address indexed to, uint256 amount, uint256 fee);
+    
+    function flashMint(address to, uint256 amount, bytes memory data) external;
+    function flashBorrow(address to, uint256 amount, bytes memory data) external;
+    function repayFlashBorrow() external payable;
+    
+    // NectraRedeem
+    event Redemption(address indexed operator, uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
+    event RedemptionFeePaid(uint256 amount);
+
+    function getRedemptionFee(uint256 amount) external view returns (uint256);
+    function redeem(uint256 amount, uint256 minAmountOut) external returns (uint256);
+    
+    // NectraLiquidate
     event PositionFullyLiquidated(
         uint256 indexed tokenId, uint256 collateral, uint256 debt, address indexed liquidator, uint256 liquidatorReward
     );
@@ -47,38 +88,15 @@ interface INectra {
         uint256 liquidationFee,
         address indexed liquidator
     );
-    event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
-
-    function quoteModifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay)
-        external
-        view
-        returns (int256, int256);
-    function modifyPosition(
-        uint256 tokenId,
-        int256 depositOrWithdraw,
-        int256 borrowOrRepay,
-        bytes memory permit
-    ) external payable returns (uint256, int256, int256, uint256, uint256);
-
-    function updatePosition(uint256 tokenId) external;
-
-    function flashMint(address to, uint256 amount, bytes memory data) external;
-    function flashBorrow(address to, uint256 amount, bytes memory data) external;
-    function repayFlashBorrow() external payable;
-
-    function getRedemptionFee(uint256 amount) external view returns (uint256);
-    function redeem(uint256 amount, uint256 minAmountOut) external returns (uint256);
-
+    event LiquidationFeePaid(uint256 amount);
+    
     function liquidate(uint256 tokenId) external;
     function fullLiquidate(uint256 tokenId) external;
-
-    function getPositionState(uint256 tokenId)
-        external
-        view
+    
+    // NectraViews
+    function getPositionState(uint256 tokenId) external view
         returns (NectraLib.PositionState memory, NectraLib.BucketState memory, NectraLib.GlobalState memory);
-    function getBucketState(uint256 interestRate)
-        external
-        view
+    function getBucketState(uint256 interestRate) external view
         returns (NectraLib.BucketState memory, NectraLib.GlobalState memory);
     function getGlobalState() external view returns (NectraLib.GlobalState memory);
     function getConfig() external view returns (NectraBase.SystemParams memory);

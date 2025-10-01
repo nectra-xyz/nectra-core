@@ -62,6 +62,10 @@ contract NectraBase {
         uint256 lastBucketAccumulatedRedeemedCollateralPerShare;
     }
 
+    /// @notice Emitted when global fees are minted to the fee recipient
+    /// @param amount Amount of fees minted
+    event GlobalFeesMinted(uint256 amount);
+
     error InvalidAmount();
     error InsufficientCollateral();
     error FlashMintInProgress();
@@ -383,6 +387,7 @@ contract NectraBase {
 
         if (global.fees > 0) {
             NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(_systemConfig().FEE_RECIPIENT_ADDRESS, global.fees);
+            emit GlobalFeesMinted(global.fees);
             global.fees = 0; // reset fees after minting
         }
     }

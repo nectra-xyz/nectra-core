@@ -32,7 +32,17 @@ abstract contract NectraRedeem is NectraBase {
     error MinAmountOutNotMet(uint256 amountOut, uint256 minAmountOut);
     error InsufficientBalance(uint256 amount, uint256 balance);
 
-    event Redemption(uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
+    /// @notice Emitted when NUSD is redeemed for collateral
+    /// @param operator Address that redeemed the NUSD
+    /// @param amount Amount of NUSD redeemed
+    /// @param collateralRedeemed Amount of collateral received
+    /// @param redemptionFee Redemption fee percentage
+    event Redemption(address indexed operator, uint256 amount, uint256 collateralRedeemed, uint256 redemptionFee);
+
+    /// @notice Emitted when a redemption fee is paid to fee recipient
+    /// @dev Used for tracking redemption revenue
+    /// @param amount Amount of collateral paid as fee
+    event RedemptionFeePaid(uint256 amount);
 
     /// @notice Redeems NUSD tokens for collateral
     /// @dev Calculates dynamic redemption fee and distributes collateral redemption across buckets
@@ -192,9 +202,10 @@ abstract contract NectraRedeem is NectraBase {
 
         if (treasuryCollateralRedeemed > 0) {
             _systemConfig().FEE_RECIPIENT_ADDRESS.safeTransferETH(treasuryCollateralRedeemed);
+            emit RedemptionFeePaid(treasuryCollateralRedeemed);
         }
 
-        emit Redemption(amount, collateralRedeemed, redemptionFeePercentage);
+        emit Redemption(msg.sender,amount, collateralRedeemed, redemptionFeePercentage);
 
         return collateralRedeemed;
     }

@@ -336,7 +336,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
     }
 
     function test_should_fail_when_repaying_position_debt_with_insufficient_allowance() public {
-        (, int256 debtDiff,,) = nectra.quoteModifyPosition(defaultTokenId, 0, -2);
+        (, int256 debtDiff,,,) = nectra.quoteModifyPosition(defaultTokenId, 0, -2);
 
         nectraUSD.approve(address(nectra), uint256(-debtDiff) - 1);
 
@@ -525,37 +525,6 @@ contract NectraModifyPositionTest is NectraBaseTest {
         // confirm position state is updated
         _checkPosition(defaultTokenId, defaultCollateral, defaultDebt - 567 ether, defaultInterestRate);
     }
-
-    // function test_should_apply_open_fee_equally_even_debt_is_increased_or_initally_large() public {
-    //     uint256[] memory tokenIds = new uint256[](2);
-
-    //     // create first position
-    //     (tokenIds[0],, ,,) = nectra.modifyPosition{value: defaultCollateral}(0, defaultCollateral, defaultDebt, defaultInterestRate, "");
-
-    //     // create second position
-    //     (tokenIds[1],, ,,) = nectra.modifyPosition{value: defaultCollateral}(0, defaultCollateral, defaultDebt / 2, defaultInterestRate, "");
-
-    //     // Fast forward 6 months
-    //     vm.warp(vm.getBlockTimestamp() + (365 days / 2));
-
-    //     // increase debt on second position
-    //     (, int256 debtDiff,,) = nectra.quoteModifyPosition(tokenIds[1], defaultCollateral, defaultDebt, defaultInterestRate);
-    //     // nectraUSD.approve(address(nectra), uint256(-debtDiff));
-    //     nectra.modifyPosition(tokenIds[1], defaultCollateral, defaultDebt, defaultInterestRate, "");
-
-    //     // confirm positions are equal
-    //     uint256 expectedDebt = defaultDebt + NectraLib.calculateInterest(defaultDebt, defaultInterestRate, 365 days / 2);
-    //     _checkPosition(tokenIds[0], defaultCollateral, expectedDebt, defaultInterestRate);
-    //     _checkPosition(tokenIds[1], defaultCollateral, expectedDebt, defaultInterestRate);
-
-    //     // // Fast forward 6 months
-    //     // vm.warp(vm.getBlockTimestamp() + (365 days / 4));
-
-    //     // confirm open fees are equal
-    //     (, int256 debtDiff1,,) = nectra.quoteModifyPosition(tokenIds[1], 0, 0, defaultInterestRate);
-    //     (, int256 debtDiff2,,) = nectra.quoteModifyPosition(tokenIds[1], 0, 0, defaultInterestRate);
-    //     assertEq(debtDiff1, debtDiff2, "Open fees are not equal");
-    // }
 
     // Redeemed collateral socialization
     function test_should_not_socialize_redeemed_collateral_to_new_position_in_same_bucket() public {

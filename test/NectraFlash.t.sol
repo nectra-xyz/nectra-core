@@ -150,7 +150,7 @@ contract NectraFlashTest is NectraBaseTest {
     function test_flashMintCanRepayDebt() public {
         uint256 debtDiff = positionDebt / 10;
         callbackParams.debtDelta = -int256(debtDiff);
-        (, int256 expectedDebtDiff,,) = nectra.quoteModifyPosition(tokenId, 0, callbackParams.debtDelta);
+        (, int256 expectedDebtDiff,,,) = nectra.quoteModifyPosition(tokenId, 0, callbackParams.debtDelta);
         callbackParams.borrowAmount = uint256(-expectedDebtDiff);
         callbackParams.addUSD = uint256(-expectedDebtDiff);
         bytes memory systemParams = abi.encode(callbackParams);
