@@ -35,14 +35,17 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         }
 
         (collaterals[0], debts[0], interestRates[0]) = (defaultCollateral, 10 ether, defaultInterestRate);
-        (collaterals[1], debts[1], interestRates[1]) = (defaultCollateral, 85 ether, defaultInterestRate + systemParams.interestRateIncrement);
-        (collaterals[2], debts[2], interestRates[2]) = (defaultCollateral, 20 ether, defaultInterestRate + systemParams.interestRateIncrement*2);
-        (collaterals[3], debts[3], interestRates[3]) = (defaultCollateral, 20 ether, defaultInterestRate + systemParams.interestRateIncrement*3);
-
+        (collaterals[1], debts[1], interestRates[1]) =
+            (defaultCollateral, 85 ether, defaultInterestRate + systemParams.interestRateIncrement);
+        (collaterals[2], debts[2], interestRates[2]) =
+            (defaultCollateral, 20 ether, defaultInterestRate + systemParams.interestRateIncrement * 2);
+        (collaterals[3], debts[3], interestRates[3]) =
+            (defaultCollateral, 20 ether, defaultInterestRate + systemParams.interestRateIncrement * 3);
 
         for (uint256 i = 0; i < interestRates.length; i++) {
             nectra.storeSystemInterestRate(interestRates[i]);
-            (tokens[i],,,,) = nectra.modifyPosition{value: collaterals[i]}(0, int256(collaterals[i]), int256(debts[i]), "");
+            (tokens[i],,,,) =
+                nectra.modifyPosition{value: collaterals[i]}(0, int256(collaterals[i]), int256(debts[i]), "");
         }
 
         nectraUSD.approve(address(nectra), type(uint256).max);
@@ -63,7 +66,9 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
     function test_should_revert_for_invalid_position_id() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForFullLiquidation.selector, type(uint256).max, systemParams.fullLiquidationRatio
+                NectraLiquidate.NotEligibleForFullLiquidation.selector,
+                type(uint256).max,
+                systemParams.fullLiquidationRatio
             )
         );
         nectra.fullLiquidate(31337);
@@ -122,20 +127,32 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // check that position is correctly removed from bucket and global state
         uint256 globalDebtAfter = nectraExternal.getGlobalDebt();
         uint256 bucketDebtAfter = nectraExternal.getBucketDebt(interestRate);
-        (NectraLib.BucketState memory bucketAfter, NectraLib.GlobalState memory globalStateAfter) = nectra.getBucketState(interestRate);
-        
+        (NectraLib.BucketState memory bucketAfter, NectraLib.GlobalState memory globalStateAfter) =
+            nectra.getBucketState(interestRate);
+
         uint256 totalDebtChange = debt + systemParams.fullLiquidationFee;
         uint256 expectedGlobalDebt = globalDebtBefore + systemParams.fullLiquidationFee;
-        uint256 bucketUnrealizedLiquidatedDebt = totalDebtChange * bucketAfter.globalDebtShares / globalStateAfter.totalDebtShares;
+        uint256 bucketUnrealizedLiquidatedDebt =
+            totalDebtChange * bucketAfter.globalDebtShares / globalStateAfter.totalDebtShares;
         uint256 expectedBucketDebt = bucketDebtBefore - debt + bucketUnrealizedLiquidatedDebt;
-        uint256 expectedCollateralPerShare = globalStateBefore.accumulatedLiquidatedCollateralPerShare + collateral.divWad(globalStateAfter.totalDebtShares);
-        uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare + totalDebtChange.divWad(globalStateAfter.totalDebtShares);
+        uint256 expectedCollateralPerShare = globalStateBefore.accumulatedLiquidatedCollateralPerShare
+            + collateral.divWad(globalStateAfter.totalDebtShares);
+        uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare
+            + totalDebtChange.divWad(globalStateAfter.totalDebtShares);
 
         assertEq(globalDebtAfter, expectedGlobalDebt, "global debt not deducted correctly");
         assertEq(bucketDebtAfter, expectedBucketDebt, "bucket debt not deducted correctly");
-        
-        assertEq(globalStateAfter.accumulatedLiquidatedCollateralPerShare, expectedCollateralPerShare, "global collateral per share not updated correctly");
-        assertEq(globalStateAfter.accumulatedLiquidatedDebtPerShare, expectedDebtPerShare, "global debt per share not updated correctly");
+
+        assertEq(
+            globalStateAfter.accumulatedLiquidatedCollateralPerShare,
+            expectedCollateralPerShare,
+            "global collateral per share not updated correctly"
+        );
+        assertEq(
+            globalStateAfter.accumulatedLiquidatedDebtPerShare,
+            expectedDebtPerShare,
+            "global debt per share not updated correctly"
+        );
 
         // check that bucket and global state are correct after updatePosition is called
         nectra.updatePosition(tokenId);
@@ -185,7 +202,11 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         nectra.updatePosition(tokens[0]);
 
         // check that the liquidator received the reward
-        assertEq(nectraUSD.balanceOf(address(this)), liquidatorBalanceBefore + systemParams.fullLiquidationFee, "liquidator reward not added to liquidator balance");
+        assertEq(
+            nectraUSD.balanceOf(address(this)),
+            liquidatorBalanceBefore + systemParams.fullLiquidationFee,
+            "liquidator reward not added to liquidator balance"
+        );
     }
 
     function test_should_realize_outstanding_interest_when_checking_cratio() public {
@@ -194,8 +215,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         (uint256 collateral, uint256 debt,) = nectraExternal.getPosition(tokenId);
         (uint256 collateralPrice,) = oracle.getLatestPrice();
         // calculate the time shift required to make the position eligible for full liquidation due to interest
-        uint256 targetInterest =
-            collateral.mulWad(collateralPrice).divWad(systemParams.fullLiquidationRatio) - debt;
+        uint256 targetInterest = collateral.mulWad(collateralPrice).divWad(systemParams.fullLiquidationRatio) - debt;
         uint256 timeShift = targetInterest.divWad(bucket.mulWad(debt));
         uint256 targetTime = block.timestamp + (timeShift * 365 days / UNIT);
 
@@ -207,7 +227,9 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // should revert because the interest is not accrued yet
         vm.expectRevert(
             abi.encodeWithSelector(
-                NectraLiquidate.NotEligibleForFullLiquidation.selector, 1411764705882352941, systemParams.fullLiquidationRatio
+                NectraLiquidate.NotEligibleForFullLiquidation.selector,
+                1411764705882352941,
+                systemParams.fullLiquidationRatio
             )
         );
         nectra.fullLiquidate(tokenId);
@@ -313,7 +335,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // update position in same bucket
         (NectraLib.PositionState memory positionBefore, NectraLib.BucketState memory bucketBefore,) =
             nectra.getPositionState(tokenId2);
-        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement*2;
+        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement * 2;
         uint256 bucketDebtBefore = nectraExternal.getBucketDebt(bucket);
         uint256 expectedDebt = bucketDebtBefore.mulWad(positionBefore.debtShares).divWad(bucketBefore.totalDebtShares);
         uint256 expectedCollateral =
@@ -342,7 +364,7 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         // update position in different bucket
         (NectraLib.PositionState memory positionBefore, NectraLib.BucketState memory bucketBefore,) =
             nectra.getPositionState(tokenId2);
-        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement*3;
+        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement * 3;
         uint256 bucketDebtBefore = nectraExternal.getBucketDebt(bucket);
         uint256 expectedDebt = bucketDebtBefore.mulWad(positionBefore.debtShares).divWad(bucketBefore.totalDebtShares);
         uint256 expectedCollateral =
@@ -354,9 +376,9 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
 
     function test_should_update_bucket_collateral_when_liquidating_full() public {
         uint256 tokenId = tokens[3];
-        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement*3;
+        uint256 bucket = defaultInterestRate + systemParams.interestRateIncrement * 3;
         (uint256 collateral,,) = nectraExternal.getPosition(tokenId);
-        
+
         uint256 fullLiquidationPrice = nectraExternal.getPositionFullLiquidationPrice(tokenId);
         (NectraLib.BucketState memory bucketBefore,) = nectra.getBucketState(bucket);
         uint256 expectedCollateral = bucketBefore.collateral - collateral;

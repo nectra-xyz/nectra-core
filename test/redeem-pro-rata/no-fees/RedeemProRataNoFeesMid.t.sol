@@ -4,7 +4,6 @@ pragma solidity ^0.8.23;
 import {RedeemProRataBaseTest} from "test/redeem-pro-rata/RedeemProRataBase.t.sol";
 
 contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
-
     function setUp() public virtual override {
         super.setUp();
 
@@ -12,7 +11,7 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         nectra.storeSystemInterestRate(interestRates[2]);
     }
 
-    function _getExpectedFeePercentage(uint256) internal override pure returns (uint256) {
+    function _getExpectedFeePercentage(uint256) internal pure override returns (uint256) {
         return 0;
     }
 
@@ -24,7 +23,7 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         uint256 redemptionAmount = 100 ether - 1;
         uint256 redemptionFeePercentage = _getExpectedFeePercentage(redemptionAmount);
         uint256 collateralRedeemed = nectra.redeem(redemptionAmount, 0);
-        
+
         // buffer reduced ~99.99 ether, but will have 2 wei left due to rounding
         assertApproxEqRel(_debt(bufferTokenId), 2, 1e11, "buffer not redeemed first");
         // other positions unchanged
@@ -32,8 +31,15 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         // verify fee was charged to redeemer and was left in position
         uint256 expectedOutput = redemptionAmount * (UNIT - redemptionFeePercentage) / price;
         assertApproxEqRel(collateralRedeemed, expectedOutput, 1e11, "redemption fee was not charged");
-        assertApproxEqRel(address(this).balance, redeemerInitialBalance + collateralRedeemed, 1e11, "collateral received was not correct");
-        assertApproxEqRel(_collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly");
+        assertApproxEqRel(
+            address(this).balance,
+            redeemerInitialBalance + collateralRedeemed,
+            1e11,
+            "collateral received was not correct"
+        );
+        assertApproxEqRel(
+            _collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly"
+        );
     }
 
     function test_redeem_AffectsBufferFirst_Full() public {
@@ -44,7 +50,7 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         uint256 redemptionAmount = 100 ether;
         uint256 redemptionFeePercentage = _getExpectedFeePercentage(redemptionAmount);
         uint256 collateralRedeemed = nectra.redeem(redemptionAmount, 0);
-        
+
         // buffer reduced ~99
         assertApproxEqRel(_debt(bufferTokenId), 0, 1e11, "buffer not redeemed first");
         // other positions unchanged
@@ -52,18 +58,26 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         // verify fee was charged to redeemer and was left in position
         uint256 expectedOutput = redemptionAmount * (UNIT - redemptionFeePercentage) / price;
         assertApproxEqRel(collateralRedeemed, expectedOutput, 1e11, "redemption fee was not charged");
-        assertApproxEqRel(address(this).balance, redeemerInitialBalance + collateralRedeemed, 1e11, "collateral received was not correct");
-        assertApproxEqRel(_collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly");
+        assertApproxEqRel(
+            address(this).balance,
+            redeemerInitialBalance + collateralRedeemed,
+            1e11,
+            "collateral received was not correct"
+        );
+        assertApproxEqRel(
+            _collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly"
+        );
     }
 
     function test_redeem_AffectsBufferFirst_JustAbove() public {
         uint256 cBufBefore = _collateral(bufferTokenId);
-        uint256[] memory debtsBefore = _getDebts(tokens);uint256 redeemerInitialBalance = address(this).balance;
+        uint256[] memory debtsBefore = _getDebts(tokens);
+        uint256 redeemerInitialBalance = address(this).balance;
 
         uint256 redemptionAmount = 100 ether + 1;
         uint256 redemptionFeePercentage = _getExpectedFeePercentage(redemptionAmount);
         uint256 collateralRedeemed = nectra.redeem(redemptionAmount, 0);
-        
+
         // buffer reduced ~99
         assertApproxEqRel(_debt(bufferTokenId), 0, 1e11, "buffer not redeemed first");
         // other positions unchanged
@@ -71,8 +85,15 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         // verify fee was charged to redeemer and was left in position
         uint256 expectedOutput = redemptionAmount * (UNIT - redemptionFeePercentage) / price;
         assertApproxEqRel(collateralRedeemed, expectedOutput, 1e11, "redemption fee was not charged");
-        assertApproxEqRel(address(this).balance, redeemerInitialBalance + collateralRedeemed, 1e11, "collateral received was not correct");
-        assertApproxEqRel(_collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly");
+        assertApproxEqRel(
+            address(this).balance,
+            redeemerInitialBalance + collateralRedeemed,
+            1e11,
+            "collateral received was not correct"
+        );
+        assertApproxEqRel(
+            _collateral(bufferTokenId), cBufBefore - expectedOutput, 1e11, "buffer collateral was not updated correctly"
+        );
     }
 
     function test_redeem_ExceedBuffer_ProRataBetweenBucketsBelow() public {
@@ -81,7 +102,7 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         uint256 bufferCollateralBefore = _collateral(bufferTokenId);
         uint256 bufferDebtBefore = _debt(bufferTokenId);
         uint256 redeemerInitialBalance = address(this).balance;
-       
+
         // Redeem 199: 100 from buffer, 99 from below
         uint256 redemptionAmount = 199 ether;
         uint256 redemptionFeePercentage = _getExpectedFeePercentage(redemptionAmount);
@@ -106,15 +127,23 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
 
         // buffer should be fully redeemed
         assertEq(_debt(bufferTokenId), 0, "buffer should be fully redeemed");
-        uint256 expectedBufferCollateral = bufferCollateralBefore - bufferDebtBefore * (UNIT - redemptionFeePercentage) / price;
-        assertApproxEqRel(_collateral(bufferTokenId), expectedBufferCollateral, 1e11, "buffer collateral was not updated correctly");
+        uint256 expectedBufferCollateral =
+            bufferCollateralBefore - bufferDebtBefore * (UNIT - redemptionFeePercentage) / price;
+        assertApproxEqRel(
+            _collateral(bufferTokenId), expectedBufferCollateral, 1e11, "buffer collateral was not updated correctly"
+        );
         // buckets should be updated correctly
         _checkCollaterals(tokens, expectedCollaterals);
         _checkDebts(tokens, expectedDebts);
         // verify fee was charged to redeemer
         uint256 expectedOutput = redemptionAmount * (UNIT - redemptionFeePercentage) / price;
         assertApproxEqRel(collateralRedeemed, expectedOutput, 1e11, "redemption fee was not charged");
-        assertApproxEqRel(address(this).balance, redeemerInitialBalance + collateralRedeemed, 1e11, "collateral received was not correct");
+        assertApproxEqRel(
+            address(this).balance,
+            redeemerInitialBalance + collateralRedeemed,
+            1e11,
+            "collateral received was not correct"
+        );
     }
 
     function test_redeem_ExceedBuffer_ProRataBetweenAtAndAbove() public {
@@ -136,8 +165,11 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
 
         // buffer should be fully redeemed
         assertEq(_debt(bufferTokenId), 0, "buffer should be fully redeemed");
-        uint256 expectedBufferCollateral = bufferCollateralBefore - bufferDebtBefore * (UNIT - firstRedemptionFeePercentage) / price;
-        assertApproxEqRel(_collateral(bufferTokenId), expectedBufferCollateral, 1e11, "buffer collateral was not updated correctly");
+        uint256 expectedBufferCollateral =
+            bufferCollateralBefore - bufferDebtBefore * (UNIT - firstRedemptionFeePercentage) / price;
+        assertApproxEqRel(
+            _collateral(bufferTokenId), expectedBufferCollateral, 1e11, "buffer collateral was not updated correctly"
+        );
         // buckets should be updated correctly
         uint256 splitAmount = 90 ether / 3;
         uint256[] memory expectedDebts = new uint256[](tokens.length);
@@ -160,13 +192,17 @@ contract RedeemProRataNoFeesMidTest is RedeemProRataBaseTest {
         uint256 expectedOutput = firstRedemptionAmount * (UNIT - firstRedemptionFeePercentage) / price;
         expectedOutput += secondRedemptionAmount * (UNIT - secondRedemptionFeePercentage) / price;
         assertApproxEqRel(collateralRedeemed, expectedOutput, 1e11, "redemption fee was not charged");
-        assertEq(address(this).balance, redeemerInitialBalance + collateralRedeemed, "redeemer collateral received was not correct");
+        assertEq(
+            address(this).balance,
+            redeemerInitialBalance + collateralRedeemed,
+            "redeemer collateral received was not correct"
+        );
     }
 
     function test_redeem_FullSystemRedemption() public {
         uint256 bufferCollateralBefore = _collateral(bufferTokenId);
         uint256[] memory collateralsBefore = _getCollaterals(tokens);
-        
+
         // Redeem full amount
         // need to redeem 1 wei less than total debt to avoid 100% fee
         nectra.redeem(600 ether, 0);

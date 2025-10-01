@@ -62,15 +62,13 @@ abstract contract NectraBaseTest is Test {
 
         // deploy nft with the initial implementation to get an address for core
         address nftProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NectraNFT()),
-            abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+            address(new NectraNFT()), abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
         );
         nectraNFT = NectraNFT(nftProxy);
-        
+
         // deploy nUSD
         address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NUSDToken()),
-            abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+            address(new NUSDToken()), abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
         );
         nectraUSD = NUSDToken(nusdProxy);
 
@@ -80,26 +78,25 @@ abstract contract NectraBaseTest is Test {
         _params.nusdTokenAddress = address(nectraUSD);
         _params.oracleAddress = address(oracle);
 
-        UnsafeUpgrades.upgradeProxy(
-            nectraProxy,
-            address(new Nectra()),
-            abi.encodeCall(Nectra.initialize, (_params))
-        );
+        UnsafeUpgrades.upgradeProxy(nectraProxy, address(new Nectra()), abi.encodeCall(Nectra.initialize, (_params)));
 
         nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 
         deal(address(this), 1_000_000 ether);
     }
 
-    function _createPosition(address user, uint256 collateral, uint256 debt, uint256 interestRate) internal returns (uint256 tokenId) {
+    function _createPosition(address user, uint256 collateral, uint256 debt, uint256 interestRate)
+        internal
+        returns (uint256 tokenId)
+    {
         vm.deal(user, collateral);
-        
+
         uint256 currentInterestRate = nectra.getSystemInterestRate();
         nectra.storeSystemInterestRate(interestRate);
-        
+
         vm.prank(user);
-            (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
-        
+        (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
+
         // restore system interest rate
         nectra.storeSystemInterestRate(currentInterestRate);
     }

@@ -12,7 +12,6 @@ import {InitialImplementation} from "src/initialImplementation.sol";
 import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
@@ -34,7 +33,7 @@ contract DeployTestnet is Script {
         OracleAggregator oracleAggregator =
             new OracleAggregator(_primaryFeed, _secondaryFeed, _primaryStalenessPeriod, _secondaryStalenessPeriod);
 
-       // deploy nectra with the initial implementation to get an address for core
+        // deploy nectra with the initial implementation to get an address for core
         address nectraProxy = Upgrades.deployUUPSProxy(
             "InitialImplementation.sol",
             bytes("") // no initializer data
@@ -43,15 +42,13 @@ contract DeployTestnet is Script {
 
         // deploy nft with the initial implementation to get an address for core
         address nftProxy = Upgrades.deployUUPSProxy(
-            "NectraNFT.sol",
-            abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+            "NectraNFT.sol", abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
         );
         NectraNFT nectraNFT = NectraNFT(nftProxy);
-        
+
         // deploy nUSD
         address nusdProxy = Upgrades.deployUUPSProxy(
-            "NUSDToken.sol",
-            abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+            "NUSDToken.sol", abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
         );
         NUSDToken nectraUSD = NUSDToken(nusdProxy);
 
@@ -83,12 +80,7 @@ contract DeployTestnet is Script {
         });
 
         Options memory opts;
-        Upgrades.upgradeProxy(
-            nectraProxy,
-            "Nectra.sol",
-            abi.encodeCall(Nectra.initialize, (params)),
-            opts
-        );
+        Upgrades.upgradeProxy(nectraProxy, "Nectra.sol", abi.encodeCall(Nectra.initialize, (params)), opts);
 
         NectraExternal nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 

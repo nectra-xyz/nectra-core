@@ -90,16 +90,31 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         }
 
         // Apply slippage and fees (reduce output)
-        if (slippageAndFees > 0 && ((params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC))
-            || (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)))) {
+        if (
+            slippageAndFees > 0
+                && (
+                    (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC))
+                        || (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD))
+                )
+        ) {
             amountOut = amountOut * (UNIT - slippageAndFees) / UNIT;
         }
-        if (slippageUSDCWCBTC > 0 && ((params.tokenIn == address(USDC) && params.tokenOut == address(WCBTC))
-            || (params.tokenIn == address(WCBTC) && params.tokenOut == address(USDC)))) {
+        if (
+            slippageUSDCWCBTC > 0
+                && (
+                    (params.tokenIn == address(USDC) && params.tokenOut == address(WCBTC))
+                        || (params.tokenIn == address(WCBTC) && params.tokenOut == address(USDC))
+                )
+        ) {
             amountOut = amountOut * (UNIT - slippageUSDCWCBTC) / UNIT;
         }
-        if (slippageNUSDUSDC > 0 && ((params.tokenIn == address(nUSD) && params.tokenOut == address(USDC))
-            || (params.tokenIn == address(USDC) && params.tokenOut == address(nUSD)))) {
+        if (
+            slippageNUSDUSDC > 0
+                && (
+                    (params.tokenIn == address(nUSD) && params.tokenOut == address(USDC))
+                        || (params.tokenIn == address(USDC) && params.tokenOut == address(nUSD))
+                )
+        ) {
             amountOut = amountOut * (UNIT - slippageNUSDUSDC) / UNIT;
         }
 
@@ -162,16 +177,31 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
         }
 
         // Apply slippage and fees (increase input required)
-        if (slippageAndFees > 0 && ((params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC))
-            || (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD)))) {
+        if (
+            slippageAndFees > 0
+                && (
+                    (params.tokenIn == address(nUSD) && params.tokenOut == address(WCBTC))
+                        || (params.tokenIn == address(WCBTC) && params.tokenOut == address(nUSD))
+                )
+        ) {
             amountIn = amountIn * (UNIT + slippageAndFees) / UNIT;
         }
-        if (slippageUSDCWCBTC > 0 && ((params.tokenIn == address(USDC) && params.tokenOut == address(WCBTC))
-            || (params.tokenIn == address(WCBTC) && params.tokenOut == address(USDC)))) {
+        if (
+            slippageUSDCWCBTC > 0
+                && (
+                    (params.tokenIn == address(USDC) && params.tokenOut == address(WCBTC))
+                        || (params.tokenIn == address(WCBTC) && params.tokenOut == address(USDC))
+                )
+        ) {
             amountIn = amountIn * (UNIT + slippageUSDCWCBTC) / UNIT;
         }
-        if (slippageNUSDUSDC > 0 && ((params.tokenIn == address(nUSD) && params.tokenOut == address(USDC))
-            || (params.tokenIn == address(USDC) && params.tokenOut == address(nUSD)))) {
+        if (
+            slippageNUSDUSDC > 0
+                && (
+                    (params.tokenIn == address(nUSD) && params.tokenOut == address(USDC))
+                        || (params.tokenIn == address(USDC) && params.tokenOut == address(nUSD))
+                )
+        ) {
             amountIn = amountIn * (UNIT + slippageNUSDUSDC) / UNIT;
         }
 
@@ -339,9 +369,17 @@ contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
 
     // ============ ADMIN FUNCTIONS ============
 
-    function setSlippageAndFees(uint256 _slippageAndFees) external { slippageAndFees = _slippageAndFees; }
-    function setSlippageUSDCWCBTC(uint256 v) external { slippageUSDCWCBTC = v; }
-    function setSlippageNUSDUSDC(uint256 v) external { slippageNUSDUSDC = v; }
+    function setSlippageAndFees(uint256 _slippageAndFees) external {
+        slippageAndFees = _slippageAndFees;
+    }
+
+    function setSlippageUSDCWCBTC(uint256 v) external {
+        slippageUSDCWCBTC = v;
+    }
+
+    function setSlippageNUSDUSDC(uint256 v) external {
+        slippageNUSDUSDC = v;
+    }
 
     function getAccumulatedFees() external view returns (uint256 nusdFees, uint256 wcbtcFees) {
         return (accumulatedFeesNUSD, accumulatedFeesWCBTC);

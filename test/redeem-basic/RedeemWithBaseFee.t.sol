@@ -78,8 +78,7 @@ contract RedeemWithBaseFeeTest is RedeemBaseTest {
         vm.stopPrank();
     }
 
-    function test_redeem_BucketDebtUpdatedCorrectly(
-    ) public {
+    function test_redeem_BucketDebtUpdatedCorrectly() public {
         uint256 redeemAmount = 10 ether;
         nectraUSD.approve(address(nectra), type(uint256).max);
 
@@ -93,12 +92,22 @@ contract RedeemWithBaseFeeTest is RedeemBaseTest {
         // set system interest rate slightly above the lowest interest rate
         nectra.storeSystemInterestRate(interestRates[0] + systemParams.interestRateIncrement);
         uint256 actualCollateralRedeemed = nectra.redeem(redeemAmount, 0);
-     
+
         uint256 userCollateralReceived = address(this).balance - initialUserETHBalance;
-     
-        assertEq(nectraUSD.balanceOf(address(this)), initialUserNUSDBalance - redeemAmount, "User nUSD balance decrease should match redeem amount");
-        assertEq(nectraExternal.getBucketDebt(interestRates[0]), initialBucketDebt - redeemAmount, "Bucket debt decrease should match redeem amount");
-        assertEq(actualCollateralRedeemed, userCollateralReceived, "Total collateral redeemed should match expected amount");
+
+        assertEq(
+            nectraUSD.balanceOf(address(this)),
+            initialUserNUSDBalance - redeemAmount,
+            "User nUSD balance decrease should match redeem amount"
+        );
+        assertEq(
+            nectraExternal.getBucketDebt(interestRates[0]),
+            initialBucketDebt - redeemAmount,
+            "Bucket debt decrease should match redeem amount"
+        );
+        assertEq(
+            actualCollateralRedeemed, userCollateralReceived, "Total collateral redeemed should match expected amount"
+        );
         assertApproxEqRel(
             userCollateralReceived,
             expectedCollateralBeforeFees,

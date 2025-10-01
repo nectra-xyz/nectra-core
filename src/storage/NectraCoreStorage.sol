@@ -38,9 +38,7 @@ library NectraCoreStorage {
     struct Layout {
         bool flashMintLock;
         uint256 flashBorrowLock;
-
         Global _global;
-
         // interestRate => epoch => Bucket
         mapping(uint256 => mapping(uint256 => Bucket)) _buckets;
         // interestRate => epoch
@@ -49,7 +47,6 @@ library NectraCoreStorage {
         mapping(uint256 => Position) _positions;
         // bitmask index => mask
         mapping(uint256 => uint256) _bucketBitMasks;
-
         // Redemption fee storage
         uint256 redemptionBuffer;
         uint256 redemptionLastUpdateTimestamp;
@@ -67,5 +64,3 @@ library NectraCoreStorage {
         }
     }
 }
-
-

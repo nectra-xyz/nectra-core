@@ -51,7 +51,9 @@ abstract contract NectraFlash is NectraBase {
 
         // call the callback
         require(
-            IFlashLoanSimpleReceiver(to).executeOperation(_systemConfig().NUSD_TOKEN_ADDRESS, amount, fee, msg.sender, data),
+            IFlashLoanSimpleReceiver(to).executeOperation(
+                _systemConfig().NUSD_TOKEN_ADDRESS, amount, fee, msg.sender, data
+            ),
             OperationFailed()
         );
 

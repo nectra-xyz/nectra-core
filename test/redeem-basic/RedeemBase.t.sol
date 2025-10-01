@@ -27,7 +27,8 @@ contract RedeemBaseTest is NectraBaseTest {
 
         (collateral[0], debt[0], interestRates[0]) = (100 ether, 10 ether, 0.05 ether);
         (collateral[1], debt[1], interestRates[1]) = (100 ether, 35 ether, 0.05 ether);
-        (collateral[2], debt[2], interestRates[2]) = (100 ether, 5 ether, 0.05 ether + systemParams.interestRateIncrement);
+        (collateral[2], debt[2], interestRates[2]) =
+            (100 ether, 5 ether, 0.05 ether + systemParams.interestRateIncrement);
         (collateral[3], debt[3], interestRates[3]) = (100 ether, 20 ether, 0.1 ether);
         (collateral[4], debt[4], interestRates[4]) = (100 ether, 25 ether, 0.1 ether);
         (collateral[5], debt[5], interestRates[5]) = (100 ether, 30 ether, 0.2 ether);

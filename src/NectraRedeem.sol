@@ -59,7 +59,7 @@ abstract contract NectraRedeem is NectraBase {
 
         _requireFlashMintUnlocked();
         _requireFlashBorrowUnlocked();
-        
+
         NectraLib.GlobalState memory globalState = _loadGlobalState();
         NectraCoreStorage.Layout storage core = _core();
         NectraConfigStorage.Layout storage config = _systemConfig();
@@ -82,21 +82,21 @@ abstract contract NectraRedeem is NectraBase {
         // check if there is a redemption buffer position and if it can be redeemed first
         if (core.redemptionBufferPositionId != 0) {
             // buffer bucket is always at 0% interest rate
-            NectraLib.BucketState memory bucket =
-                _loadAndUpdateBucketState(0, core._epochs[0], globalState);
+            NectraLib.BucketState memory bucket = _loadAndUpdateBucketState(0, core._epochs[0], globalState);
 
             uint256 bucketDebt = NectraLib.calculateBucketDebt(bucket, globalState, NectraMathLib.Rounding.Down);
 
             if (bucketDebt > 0) {
                 (amountRemaining, collateralRedeemed) = _redeemBucket(
-                    globalState, 
-                    bucket, 
-                    amount, 
+                    globalState,
+                    bucket,
+                    amount,
                     // force the redemption to leave 100% of the fee in the buffer position
-                    redemptionFeePercentage, 
-                    collateralPrice, 
-                    0, 
-                    bucketDebt);
+                    redemptionFeePercentage,
+                    collateralPrice,
+                    0,
+                    bucketDebt
+                );
             }
         }
 
@@ -104,11 +104,8 @@ abstract contract NectraRedeem is NectraBase {
 
         // if amount remaining is greater than 0, redeem from the remaining buckets below the system interest rate
         if (amountRemaining > 0) {
-            (
-                uint256 numBuckets, 
-                uint256[] memory bucketDebts, 
-                NectraLib.BucketState[] memory buckets
-            ) = _getUpdatedBucketsAndDebt(globalState, collateralPrice, core, config);
+            (uint256 numBuckets, uint256[] memory bucketDebts, NectraLib.BucketState[] memory buckets) =
+                _getUpdatedBucketsAndDebt(globalState, collateralPrice, core, config);
 
             uint256 systemInterestRate = _systemInterestRate();
 
@@ -119,7 +116,9 @@ abstract contract NectraRedeem is NectraBase {
                 if (buckets[i].interestRate < systemInterestRate) {
                     totalDebtBelow += bucketDebts[i];
                     numBucketsBelow++;
-                } else break;
+                } else {
+                    break;
+                }
             }
 
             // cap the amount to redeem below the system interest rate to the amount remaining
@@ -130,15 +129,15 @@ abstract contract NectraRedeem is NectraBase {
             if (amountToRedeemBelow > 0) {
                 // redeem buckets below system interest rate pro-rata
                 // at most this should fully redeem all of these buckets with nothing remaining
-                (splitCollateralRedeemed, ) = _redeemFromBucketRangeProRata(
-                    globalState, 
-                    amountToRedeemBelow, 
-                    redemptionFeePercentage - treasuryFeePercentage, 
-                    0, 
-                    numBucketsBelow, 
-                    totalDebtBelow, 
-                    collateralPrice, 
-                    bucketDebts, 
+                (splitCollateralRedeemed,) = _redeemFromBucketRangeProRata(
+                    globalState,
+                    amountToRedeemBelow,
+                    redemptionFeePercentage - treasuryFeePercentage,
+                    0,
+                    numBucketsBelow,
+                    totalDebtBelow,
+                    collateralPrice,
+                    bucketDebts,
                     buckets
                 );
             }
@@ -152,7 +151,9 @@ abstract contract NectraRedeem is NectraBase {
                     if (buckets[i].interestRate >= systemInterestRate) {
                         totalDebtFromSIR += bucketDebts[i];
                         totalBucketsFromSIR++;
-                    } else break;
+                    } else {
+                        break;
+                    }
                 }
 
                 // cap the amount to redeem from the system interest rate to the amount remaining
@@ -162,15 +163,15 @@ abstract contract NectraRedeem is NectraBase {
                 if (amountToRedeemFromSIR > 0) {
                     // redeem buckets above system interest rate pro-rata
                     // at most this should fully redeem the system
-                    (uint256 collateralRedeemedFromSIR, ) = _redeemFromBucketRangeProRata(
-                        globalState, 
-                        amountToRedeemFromSIR, 
-                        redemptionFeePercentage - treasuryFeePercentage, 
-                        numBucketsBelow, 
-                        numBuckets, 
-                        totalDebtFromSIR, 
-                        collateralPrice, 
-                        bucketDebts, 
+                    (uint256 collateralRedeemedFromSIR,) = _redeemFromBucketRangeProRata(
+                        globalState,
+                        amountToRedeemFromSIR,
+                        redemptionFeePercentage - treasuryFeePercentage,
+                        numBucketsBelow,
+                        numBuckets,
+                        totalDebtFromSIR,
+                        collateralPrice,
+                        bucketDebts,
                         buckets
                     );
 
@@ -190,7 +191,8 @@ abstract contract NectraRedeem is NectraBase {
         collateralRedeemed += splitCollateralRedeemed;
 
         require(
-            /*collateralRedeemed > 0 &&*/ collateralRedeemed >= minAmountOut,
+            /*collateralRedeemed > 0 &&*/
+            collateralRedeemed >= minAmountOut,
             MinAmountOutNotMet(collateralRedeemed, minAmountOut)
         );
 
@@ -205,7 +207,7 @@ abstract contract NectraRedeem is NectraBase {
             emit RedemptionFeePaid(treasuryCollateralRedeemed);
         }
 
-        emit Redemption(msg.sender,amount, collateralRedeemed, redemptionFeePercentage);
+        emit Redemption(msg.sender, amount, collateralRedeemed, redemptionFeePercentage);
 
         return collateralRedeemed;
     }
@@ -222,20 +224,17 @@ abstract contract NectraRedeem is NectraBase {
     /// @return collateralRedeemed Amount of collateral redeemed
     function _redeemBucket(
         NectraLib.GlobalState memory globalState,
-        NectraLib.BucketState memory bucket, 
+        NectraLib.BucketState memory bucket,
         uint256 redemptionAmount,
         uint256 redemptionFee,
         uint256 collateralPrice,
         uint256 interestRate,
         uint256 bucketDebt
-    ) internal returns (
-        uint256 amountRemaining,
-        uint256 collateralRedeemed
-    ) {
+    ) internal returns (uint256 amountRemaining, uint256 collateralRedeemed) {
         if (bucketDebt > 0) {
             // cap the amount of debt to burn to the bucket
             uint256 burnAmount = redemptionAmount < bucketDebt ? redemptionAmount : bucketDebt;
-   
+
             NectraLib.modifyBucket(bucket, globalState, -int256(burnAmount));
             bucketDebt -= burnAmount;
 
@@ -252,7 +251,7 @@ abstract contract NectraRedeem is NectraBase {
 
             // should not underflow because burnAmount <= redemptionAmount
             amountRemaining = redemptionAmount - burnAmount;
-            
+
             _finalizeBucket(bucket);
 
             // if the bucket is fully redeemed, increment the epoch
@@ -262,7 +261,7 @@ abstract contract NectraRedeem is NectraBase {
         }
     }
 
-    /// @notice Gets the updated buckets and debt 
+    /// @notice Gets the updated buckets and debt
     /// @dev Skips buckets that are likely insolvent
     /// @param globalState Current global state of the system
     /// @param collateralPrice Collateral price
@@ -272,15 +271,15 @@ abstract contract NectraRedeem is NectraBase {
     /// @return bucketDebts Debts of the buckets
     /// @return buckets Updated bucket states
     function _getUpdatedBucketsAndDebt(
-        NectraLib.GlobalState memory globalState, 
+        NectraLib.GlobalState memory globalState,
         uint256 collateralPrice,
         NectraCoreStorage.Layout storage core,
         NectraConfigStorage.Layout storage config
-    ) internal view returns (
-        uint256 numBuckets,
-        uint256[] memory bucketDebts,
-        NectraLib.BucketState[] memory buckets
-    ) {
+    )
+        internal
+        view
+        returns (uint256 numBuckets, uint256[] memory bucketDebts, NectraLib.BucketState[] memory buckets)
+    {
         // initialize the arrays with the maximum number of active buckets
         bucketDebts = new uint256[](core.numActiveBuckets);
         buckets = new NectraLib.BucketState[](core.numActiveBuckets);
@@ -292,7 +291,10 @@ abstract contract NectraRedeem is NectraBase {
         uint256 totalDebt = 0;
 
         // will reach system debt before max interest rate
-        while ((totalDebt < globalState.debt + globalState.unrealizedLiquidatedDebt) && interestRate <= config.MAXIMUM_INTEREST_RATE) {
+        while (
+            (totalDebt < globalState.debt + globalState.unrealizedLiquidatedDebt)
+                && interestRate <= config.MAXIMUM_INTEREST_RATE
+        ) {
             {
                 uint256 shiftedMask = bitMask >> (bucketId % 256);
 
@@ -345,9 +347,9 @@ abstract contract NectraRedeem is NectraBase {
     /// @return collateralRedeemed Amount of collateral redeemed
     /// @return amountRemaining Amount of NUSD that was not redeemed
     function _redeemFromBucketRangeProRata(
-        NectraLib.GlobalState memory globalState, 
-        uint256 amount, 
-        uint256 redemptionFee, 
+        NectraLib.GlobalState memory globalState,
+        uint256 amount,
+        uint256 redemptionFee,
         uint256 rangeStart,
         uint256 rangeEnd,
         uint256 totalDebtInRange,

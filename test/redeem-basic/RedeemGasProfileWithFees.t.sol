@@ -21,7 +21,9 @@ contract RedeemGasProfileWithFeesTest is NectraBaseTest {
         }
 
         for (uint256 i = 0; i < 100; i++) {
-            nectra.storeSystemInterestRate(systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement);
+            nectra.storeSystemInterestRate(
+                systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement
+            );
             nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 

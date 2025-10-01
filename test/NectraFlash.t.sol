@@ -46,8 +46,10 @@ contract NectraFlashTest is NectraBaseTest {
 
         // Get some nUSD for flash fees and give nectra some cBTC to loan out
         int256 debtBeforeFee = int256(positionDebt * 1 ether / (1 ether + systemParams.openFeePercentage)); // Debt before fee
-        (tokenId,,,,) = nectra.modifyPosition{value: positionCollateral}(0, int256(positionCollateral), debtBeforeFee, "");
-        uint256 expectedDebt = uint256(debtBeforeFee) + (uint256(debtBeforeFee) * systemParams.openFeePercentage / 1 ether);
+        (tokenId,,,,) =
+            nectra.modifyPosition{value: positionCollateral}(0, int256(positionCollateral), debtBeforeFee, "");
+        uint256 expectedDebt =
+            uint256(debtBeforeFee) + (uint256(debtBeforeFee) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(tokenId, positionCollateral, expectedDebt, interestRate);
         // Updated positionDebt to be exact amount in the position
         positionDebt = nectraExternal.getPositionDebt(tokenId);
@@ -299,8 +301,8 @@ contract NectraFlashTest is NectraBaseTest {
         nectra.flashBorrow(address(this), callbackParams.borrowAmount, params);
 
         // Expected position debt will be the delta plus the open fee
-        uint256 expectedDebt =
-            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
+        uint256 expectedDebt = uint256(callbackParams.debtDelta)
+            + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(
             tokenId, positionCollateral + callbackParams.borrowAmount, positionDebt + expectedDebt, interestRate
         );
@@ -329,7 +331,8 @@ contract NectraFlashTest is NectraBaseTest {
         callbackParams.collateralDelta = int256(newPositionCollateral);
         // New debt ~$214. Calc takes into account opening fee since this is now part of the cratio i.e. what is the max debt delta we can take such that we are at issuance given the a realized opening fee
         callbackParams.debtDelta = int256(
-            (newPositionCollateral * price * 1 ether) / (systemParams.issuanceRatio * (1 ether + systemParams.openFeePercentage))
+            (newPositionCollateral * price * 1 ether)
+                / (systemParams.issuanceRatio * (1 ether + systemParams.openFeePercentage))
         );
         // Use leverage callback
         callbackParams.leverageCallback = true;
@@ -354,8 +357,8 @@ contract NectraFlashTest is NectraBaseTest {
         );
 
         // Expected position debt will be the delta plus the open fee
-        uint256 expectedDebt =
-            uint256(callbackParams.debtDelta) + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
+        uint256 expectedDebt = uint256(callbackParams.debtDelta)
+            + (uint256(callbackParams.debtDelta) * systemParams.openFeePercentage / 1 ether);
         _checkPosition(tokenId, newPositionCollateral, expectedDebt, interestRate);
     }
 
@@ -428,7 +431,9 @@ contract NectraFlashTest is NectraBaseTest {
         assertEq(initiator, address(this));
 
         CallbackParams memory systemParams = abi.decode(encodedParams, (CallbackParams));
-        assertEq(amount, systemParams.borrowAmount, "Borrow amount passed should be equal to systemParams borrow amount");
+        assertEq(
+            amount, systemParams.borrowAmount, "Borrow amount passed should be equal to systemParams borrow amount"
+        );
 
         uint256 repayValue = amount * systemParams.repayValueRatio / 1 ether;
         uint256 repayFee = premium * systemParams.repayFeeRatio / 1 ether;
@@ -442,7 +447,9 @@ contract NectraFlashTest is NectraBaseTest {
                 nectra.flashBorrow(address(this), systemParams.borrowAmount, encodedParams);
             }
             assertEq(msg.value, 0, "cBTC value should be 0");
-            assertEq(address(this).balance, systemParams.btcBalanceBefore, "Contract cBTC balance should be balance before");
+            assertEq(
+                address(this).balance, systemParams.btcBalanceBefore, "Contract cBTC balance should be balance before"
+            );
             assertEq(
                 nectraUSD.balanceOf(address(this)),
                 systemParams.usdBalanceBefore + systemParams.borrowAmount,
@@ -450,7 +457,12 @@ contract NectraFlashTest is NectraBaseTest {
             );
 
             _checkAndModifyPositionWithBorrowedAmounts(
-                systemParams.collateralDelta, systemParams.debtDelta, amount, 0, systemParams.addUSD, systemParams.addBTC
+                systemParams.collateralDelta,
+                systemParams.debtDelta,
+                amount,
+                0,
+                systemParams.addUSD,
+                systemParams.addBTC
             );
 
             // Repay loan + fee
@@ -483,7 +495,12 @@ contract NectraFlashTest is NectraBaseTest {
             );
 
             _checkAndModifyPositionWithBorrowedAmounts(
-                systemParams.collateralDelta, systemParams.debtDelta, 0, amount, systemParams.addUSD, systemParams.addBTC
+                systemParams.collateralDelta,
+                systemParams.debtDelta,
+                0,
+                amount,
+                systemParams.addUSD,
+                systemParams.addBTC
             );
 
             // Repay loan + fee

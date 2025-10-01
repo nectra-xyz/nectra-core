@@ -22,7 +22,7 @@ contract NUSDToken is ERC20, Initializable, OwnableUpgradeable, UUPSUpgradeable 
     /// @param minter Address of the contract that can mint and burn tokens
     function initialize(address owner, address minter) public initializer {
         MINTER = minter;
-        
+
         __Ownable_init(owner);
         __UUPSUpgradeable_init();
     }

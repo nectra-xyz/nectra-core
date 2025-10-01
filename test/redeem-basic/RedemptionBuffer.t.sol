@@ -82,7 +82,7 @@ contract RedemptionBufferTest is NectraBaseTest {
 
     // 4. ensure the redemption buffer position is redeemed entirely before rest of system is affected by redemptions
     function test_redemptionsHitBufferBeforeOtherBuckets() public {
-      address user = makeAddr("user");
+        address user = makeAddr("user");
 
         // Create buffer with debt and another user bucket with debt
         uint256 bufferTokenId = _createBuffer(10 ether, 5 ether, manager);
@@ -99,8 +99,8 @@ contract RedemptionBufferTest is NectraBaseTest {
         // Perform redemption smaller than buffer debt
         uint256 redeemAmount = 5 ether;
         vm.startPrank(user);
-          nectraUSD.approve(address(nectra), redeemAmount);
-          nectra.redeem(redeemAmount, 0);
+        nectraUSD.approve(address(nectra), redeemAmount);
+        nectra.redeem(redeemAmount, 0);
         vm.stopPrank();
 
         // Buffer should absorb redemption fully; other bucket unchanged
@@ -156,5 +156,3 @@ contract RedemptionBufferTest is NectraBaseTest {
         _checkPosition(a, 10 ether, 5 ether, systemIR);
     }
 }
-
-

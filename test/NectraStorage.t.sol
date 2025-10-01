@@ -48,11 +48,11 @@ contract NectraStorageTest is NectraBaseTest {
         uint256 minRate = systemParams.minimumInterestRate;
         vm.deal(address(this), address(this).balance + 2 ether);
         nectra.storeSystemInterestRate(minRate);
-        (uint256 tokenId,, , ,) = nectra.modifyPosition{value: 2 ether}(0, int256(2 ether), int256(1 ether), "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 2 ether}(0, int256(2 ether), int256(1 ether), "");
         assertGt(tokenId, 0, "position not created");
 
         nectraUSD.approve(address(nectra), type(uint256).max);
-        
+
         vm.warp(block.timestamp + 1 hours);
         uint256 out1 = nectra.redeem(0.1 ether, 0);
         // second redeem shortly after should have higher fee -> less collateral out
@@ -68,7 +68,7 @@ contract NectraStorageTest is NectraBaseTest {
         uint256 debt = 0.4 ether;
         vm.deal(address(this), address(this).balance + collateral);
         nectra.storeSystemInterestRate(rate);
-        (uint256 tokenId,, , ,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
 
         (NectraLib.PositionState memory p, NectraLib.BucketState memory b, NectraLib.GlobalState memory g) =
             nectra.getPositionState(tokenId);
@@ -93,8 +93,8 @@ contract NectraStorageTest is NectraBaseTest {
         uint256 collateral = 1 ether;
         uint256 debt = 0.2 ether;
         vm.deal(address(this), address(this).balance + collateral);
-        
-        (uint256 tokenId,, , ,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
+
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
 
         // Upgrade to a fresh implementation of Nectra (no init data)
         UnsafeUpgrades.upgradeProxy(address(nectra), address(new Nectra()), "");
@@ -110,5 +110,3 @@ contract NectraStorageTest is NectraBaseTest {
         assertGe(p.debtShares, debt, "position debt shares lost across upgrade");
     }
 }
-
-

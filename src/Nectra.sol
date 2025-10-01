@@ -22,15 +22,15 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 /// @notice Core contract for managing collateralized debt positions
 /// @dev Handles position creation, modification, and management with interest rate buckets
 /// @dev Holds the deposited cBTC balance for the system
-contract Nectra is 
-    NectraBase, 
-    NectraRedeem, 
-    NectraLiquidate, 
+contract Nectra is
+    NectraBase,
+    NectraRedeem,
+    NectraLiquidate,
     NectraFlash,
-    NectraViews, 
-    Initializable, 
-    OwnableUpgradeable, 
-    UUPSUpgradeable 
+    NectraViews,
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable
 {
     using NectraMathLib for uint256;
     using FixedPointMathLib for uint256;
@@ -77,7 +77,6 @@ contract Nectra is
     /// @notice Emitted when the redemption buffer position manager is set
     /// @param redemptionBufferPositionManager The redemption buffer position manager
     event RedemptionBufferPositionManagerSet(address redemptionBufferPositionManager);
-    
 
     /// @param params System parameters defined in NectraBase
     function initialize(SystemParams memory params) public initializer {
@@ -99,12 +98,11 @@ contract Nectra is
     /// @return borrowOrRepay Actual amount of nUSD borrowed or repaid
     /// @return collateral The total collateral in the position after modification
     /// @return effectiveDebt The total effective debt of the position after modification
-    function modifyPosition(
-        uint256 tokenId,
-        int256 depositOrWithdraw,
-        int256 borrowOrRepay,
-        bytes calldata permit
-    ) external payable returns (uint256, int256, int256, uint256, uint256) {
+    function modifyPosition(uint256 tokenId, int256 depositOrWithdraw, int256 borrowOrRepay, bytes calldata permit)
+        external
+        payable
+        returns (uint256, int256, int256, uint256, uint256)
+    {
         NectraLib.GlobalState memory global;
         NectraLib.BucketState memory bucket;
         NectraLib.PositionState memory position;
@@ -136,7 +134,8 @@ contract Nectra is
                 }
 
                 require(
-                    NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).authorized(tokenId, msg.sender, permissionBitMask), NotOwnerNorApproved()
+                    NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).authorized(tokenId, msg.sender, permissionBitMask),
+                    NotOwnerNorApproved()
                 );
             }
         } else {
@@ -214,9 +213,11 @@ contract Nectra is
     /// @return borrowOrRepay Actual amount of nUSD borrowed or repaid
     /// @return collateral The total collateral in the position after modification
     /// @return effectiveDebt The total effective debt of the position after modification
-    function createRedemptionBufferPosition(uint256 collateral, uint256 debt, address manager) 
-    external payable onlyOwner 
-    returns (uint256, int256, int256, uint256, uint256) 
+    function createRedemptionBufferPosition(uint256 collateral, uint256 debt, address manager)
+        external
+        payable
+        onlyOwner
+        returns (uint256, int256, int256, uint256, uint256)
     {
         uint256 existingBufferId = _redemptionBufferPositionId();
         address existingBufferManager = _redemptionBufferPositionManager();
@@ -267,18 +268,9 @@ contract Nectra is
 
         if (borrow > 0) {
             NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(manager, uint256(borrow));
-        } 
+        }
 
-        emit ModifyPosition(
-            tokenId,
-            deposit,
-            borrow,
-            position.collateral,
-            effectiveDebt,
-            interestRate,
-            msg.sender,
-            fee
-        );
+        emit ModifyPosition(tokenId, deposit, borrow, position.collateral, effectiveDebt, interestRate, msg.sender, fee);
 
         return (tokenId, deposit, borrow, position.collateral, effectiveDebt);
     }
@@ -385,16 +377,15 @@ contract Nectra is
             collateralDiff: depositOrWithdraw,
             debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
-  
+
         uint256 finalEffectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
 
         if (
             // only migrate if position has debt
-            finalEffectiveDebt > 0 &&
             // only migrate if interest rate changes and not buffer position
-            (interestRate != position.interestRate) &&
             // only migrate if position is decreasing c-ratio
-            (borrowOrRepay > 0 || depositOrWithdraw < 0)
+            finalEffectiveDebt > 0 && (interestRate != position.interestRate)
+                && (borrowOrRepay > 0 || depositOrWithdraw < 0)
         ) {
             NectraLib.copy(oldBucket, bucket);
             NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
@@ -408,7 +399,8 @@ contract Nectra is
             MinimumDepositNotMet(position.collateral, _systemConfig().MINIMUM_COLLATERAL)
         );
         require(
-            finalEffectiveDebt >= _systemConfig().MINIMUM_BORROW || (finalEffectiveDebt == 0 && position.collateral == 0),
+            finalEffectiveDebt >= _systemConfig().MINIMUM_BORROW
+                || (finalEffectiveDebt == 0 && position.collateral == 0),
             MinimumDebtNotMet(finalEffectiveDebt, _systemConfig().MINIMUM_BORROW)
         );
 
@@ -427,7 +419,10 @@ contract Nectra is
             uint256 cratio = position.collateral.mulWad(collateralPrice).divWad(finalEffectiveDebt);
 
             // Check position collateralization ratio
-            require(cratio >= _systemConfig().ISSUANCE_RATIO, InvalidCollateralizationRatio(cratio, _systemConfig().ISSUANCE_RATIO));
+            require(
+                cratio >= _systemConfig().ISSUANCE_RATIO,
+                InvalidCollateralizationRatio(cratio, _systemConfig().ISSUANCE_RATIO)
+            );
         }
 
         return (depositOrWithdraw, borrowOrRepay, position.collateral, finalEffectiveDebt, fixedRateOpenFee);
@@ -479,7 +474,7 @@ contract Nectra is
     function getRedemptionBufferPositionId() external view returns (uint256) {
         return _redemptionBufferPositionId();
     }
-    
+
     /// @notice Gets the redemption buffer position manager
     /// @return The redemption buffer position manager
     function getRedemptionBufferPositionManager() external view returns (address) {

@@ -11,7 +11,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
     uint256 internal bufferTokenId;
 
     address internal manager;
-    
+
     uint256[] internal tokens;
     uint256[] internal interestRates;
     uint256[] internal debt;
@@ -37,11 +37,36 @@ contract RedeemProRataBaseTest is NectraBaseTest {
             sstore(users.slot, 5)
         }
 
-        (users[0], collateral[0], debt[0], interestRates[0]) = (makeAddr("user0"), 200 ether, 150 ether, systemParams.minimumInterestRate + 10 * systemParams.interestRateIncrement);
-        (users[1], collateral[1], debt[1], interestRates[1]) = (makeAddr("user1"), 200 ether, 50 ether,  systemParams.minimumInterestRate + 13 * systemParams.interestRateIncrement);
-        (users[2], collateral[2], debt[2], interestRates[2]) = (makeAddr("user2"), 200 ether, 100 ether, systemParams.minimumInterestRate + 50 * systemParams.interestRateIncrement);
-        (users[3], collateral[3], debt[3], interestRates[3]) = (makeAddr("user3"), 200 ether, 100 ether, systemParams.minimumInterestRate + 73 * systemParams.interestRateIncrement);
-        (users[4], collateral[4], debt[4], interestRates[4]) = (makeAddr("user4"), 200 ether, 100 ether, systemParams.minimumInterestRate + 74 * systemParams.interestRateIncrement);
+        (users[0], collateral[0], debt[0], interestRates[0]) = (
+            makeAddr("user0"),
+            200 ether,
+            150 ether,
+            systemParams.minimumInterestRate + 10 * systemParams.interestRateIncrement
+        );
+        (users[1], collateral[1], debt[1], interestRates[1]) = (
+            makeAddr("user1"),
+            200 ether,
+            50 ether,
+            systemParams.minimumInterestRate + 13 * systemParams.interestRateIncrement
+        );
+        (users[2], collateral[2], debt[2], interestRates[2]) = (
+            makeAddr("user2"),
+            200 ether,
+            100 ether,
+            systemParams.minimumInterestRate + 50 * systemParams.interestRateIncrement
+        );
+        (users[3], collateral[3], debt[3], interestRates[3]) = (
+            makeAddr("user3"),
+            200 ether,
+            100 ether,
+            systemParams.minimumInterestRate + 73 * systemParams.interestRateIncrement
+        );
+        (users[4], collateral[4], debt[4], interestRates[4]) = (
+            makeAddr("user4"),
+            200 ether,
+            100 ether,
+            systemParams.minimumInterestRate + 74 * systemParams.interestRateIncrement
+        );
 
         for (uint256 i = 0; i < interestRates.length; i++) {
             tokens[i] = _createPosition(users[i], collateral[i], debt[i], interestRates[i]);
@@ -56,7 +81,9 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         redemptionBufferDebt = 100 ether;
         vm.deal(address(this), redemptionBufferCollateral);
 
-        (bufferTokenId,,,,) = nectra.createRedemptionBufferPosition{value: redemptionBufferCollateral}(redemptionBufferCollateral, redemptionBufferDebt, manager);
+        (bufferTokenId,,,,) = nectra.createRedemptionBufferPosition{value: redemptionBufferCollateral}(
+            redemptionBufferCollateral, redemptionBufferDebt, manager
+        );
 
         // Unlimited approval for redemptions
         nectraUSD.approve(address(nectra), type(uint256).max);
@@ -92,18 +119,24 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         return collaterals;
     }
 
-    function _checkDebts(uint256[] memory tokenIds, uint256[] memory expectedDebts) internal view  {
+    function _checkDebts(uint256[] memory tokenIds, uint256[] memory expectedDebts) internal view {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             assertApproxEqRel(
-                _debt(tokenIds[i]), expectedDebts[i], 1e11, string.concat("debt mismatch for token ", Strings.toString(i))
+                _debt(tokenIds[i]),
+                expectedDebts[i],
+                1e11,
+                string.concat("debt mismatch for token ", Strings.toString(i))
             );
         }
     }
 
-    function _checkCollaterals(uint256[] memory tokenIds, uint256[] memory expectedCollaterals) internal view  {
+    function _checkCollaterals(uint256[] memory tokenIds, uint256[] memory expectedCollaterals) internal view {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             assertApproxEqRel(
-                _collateral(tokenIds[i]), expectedCollaterals[i], 1e11, string.concat("collateral mismatch for token ", Strings.toString(i))
+                _collateral(tokenIds[i]),
+                expectedCollaterals[i],
+                1e11,
+                string.concat("collateral mismatch for token ", Strings.toString(i))
             );
         }
     }
@@ -114,7 +147,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         uint256 collateralBefore = _collateral(tokenId);
         vm.prank(user);
         nectra.modifyPosition(tokenId, type(int256).min, type(int256).min, "");
-        
+
         assertEq(user.balance, balanceBefore + collateralBefore, "Position should have received collateral");
         assertEq(_collateral(tokenId), 0 ether, "Position should have no collateral");
         assertEq(_debt(tokenId), 0 ether, "Position should have no debt");
@@ -128,5 +161,3 @@ contract RedeemProRataBaseTest is NectraBaseTest {
 
     function _getExpectedFeePercentage(uint256 redemptionAmount) internal virtual returns (uint256) {}
 }
-
-

@@ -46,16 +46,20 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 tokenId;
         // Open positions with different interest rates
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(10 ether), "");
+        (tokenId,,,,) =
+            nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(10 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(85 ether), "");
+        (tokenId,,,,) =
+            nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(85 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
+        (tokenId,,,,) =
+            nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
+        (tokenId,,,,) =
+            nectra.modifyPosition{value: defaultCollateral}(0, int256(defaultCollateral), int256(20 ether), "");
         tokens.push(tokenId);
 
         mockDex = new DEXMock(address(nectraUSD), address(nectra), address(oracle));
@@ -406,7 +410,11 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         );
 
         // confirm that the bucket collateral is updated correctly
-        assertEq(bucketAfter.collateral, bucketBefore.collateral - liquidationAmounts.collateralToLiquidate, "bucket collateral not updated correctly");
+        assertEq(
+            bucketAfter.collateral,
+            bucketBefore.collateral - liquidationAmounts.collateralToLiquidate,
+            "bucket collateral not updated correctly"
+        );
 
         // check postion debt shares are updated correctly
         uint256 positionDebtShareDecrease = (liquidationAmounts.debtToLiquidate - liquidationAmounts.closingFee).mulWad(
@@ -474,7 +482,9 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 rewardAmount =
             cBTCReceived.mulWad(liquidationAmounts.liquidationPrice) - liquidationAmounts.debtToLiquidate;
         assertLt(
-            rewardAmount, systemParams.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
+            rewardAmount,
+            systemParams.maximumLiquidatorReward,
+            "Liquidator reward is not capped at maximum liquidator reward"
         );
     }
 
@@ -509,7 +519,9 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 rewardAmount =
             cBTCReceived.mulWad(liquidationAmounts.liquidationPrice) - liquidationAmounts.debtToLiquidate;
         assertLt(
-            rewardAmount, systemParams.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
+            rewardAmount,
+            systemParams.maximumLiquidatorReward,
+            "Liquidator reward is not capped at maximum liquidator reward"
         );
     }
 
@@ -561,7 +573,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
 
         uint256 debtDiff = 15 ether;
         uint256 newDebt = liquidationAmounts.initialDebt - debtDiff;
-        nectra.modifyPosition(tokenId, 0, - int256(debtDiff), "");
+        nectra.modifyPosition(tokenId, 0, -int256(debtDiff), "");
 
         // check that position is in healthy state
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
@@ -576,11 +588,13 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     }
 
     // Flash loan receiver
-    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata systemParams)
-        external
-        payable
-        returns (bool)
-    {
+    function executeOperation(
+        address asset,
+        uint256 amount,
+        uint256 premium,
+        address initiator,
+        bytes calldata systemParams
+    ) external payable returns (bool) {
         // Basic checks for the flash loan receiver
         require(msg.sender == address(nectra), "Invalid caller");
         require(initiator == address(this), "Invalid initiator");
@@ -645,8 +659,8 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         // uint256 penalty = amountToFix.mulWadUp(LIQUIDATION_PENALTY_PERCENTAGE);
         liquidationAmounts.penalty = liquidationAmounts.amountToFix.mulWadUp(systemParams.liquidationPenaltyPercentage);
         // uint256 penaltyCollateral = penalty.divWadUp(globalState.collateralPrice).mulWadUp(ISSUANCE_RATIO);
-        liquidationAmounts.penaltyCollateral =
-            liquidationAmounts.penalty.divWadUp(liquidationAmounts.liquidationPrice).mulWadUp(systemParams.issuanceRatio);
+        liquidationAmounts.penaltyCollateral = liquidationAmounts.penalty.divWadUp(liquidationAmounts.liquidationPrice)
+            .mulWadUp(systemParams.issuanceRatio);
 
         // calculate the amount of collateral to redeem
         // uint256 collateralToRedeem = amountToFix.divWadUp(globalState.collateralPrice);

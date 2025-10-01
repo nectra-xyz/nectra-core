@@ -71,26 +71,26 @@ contract RedemptionBufferSimulation is Test {
             nusdTokenAddress: address(nusd),
             oracleAddress: address(oracle),
             feeRecipientAddress: feeRecipient,
-            minimumCollateral: 0,                              // 0 cBTC
-            minimumDebt: 50 ether,                             // 50 nUSD
-            systemInterestRate: 0.025 ether,                   // 2.5%
-            maximumInterestRate: 1 ether,                      // 100%
-            minimumInterestRate: 0 ether,                      // 0%
-            interestRateIncrement: 0.0001 ether,               // 0.01%
-            liquidationRatio: 1.1 ether,                       // 110%
-            liquidatorRewardPercentage: 0.9 ether,             // 90%
-            liquidationPenaltyPercentage: 0.15 ether,          // 15%
-            fullLiquidationRatio: 1.05 ether,                  // 105%
-            fullLiquidationFee: 5 ether,                       // $5
-            maximumLiquidatorReward: 5 ether,                  // $5
-            issuanceRatio: 1.2 ether,                          // 120%
-            redemptionFeeDecayPeriod: 6 hours,                 // 6 hours
-            redemptionBaseFee: 0.005 ether,                    // 0.5%
-            redemptionDynamicFeeScalar: 1 ether,               // 1
+            minimumCollateral: 0, // 0 cBTC
+            minimumDebt: 50 ether, // 50 nUSD
+            systemInterestRate: 0.025 ether, // 2.5%
+            maximumInterestRate: 1 ether, // 100%
+            minimumInterestRate: 0 ether, // 0%
+            interestRateIncrement: 0.0001 ether, // 0.01%
+            liquidationRatio: 1.1 ether, // 110%
+            liquidatorRewardPercentage: 0.9 ether, // 90%
+            liquidationPenaltyPercentage: 0.15 ether, // 15%
+            fullLiquidationRatio: 1.05 ether, // 105%
+            fullLiquidationFee: 5 ether, // $5
+            maximumLiquidatorReward: 5 ether, // $5
+            issuanceRatio: 1.2 ether, // 120%
+            redemptionFeeDecayPeriod: 6 hours, // 6 hours
+            redemptionBaseFee: 0.005 ether, // 0.5%
+            redemptionDynamicFeeScalar: 1 ether, // 1
             redemptionFeeTreasuryThreshold: type(uint256).max, // 0 -> Full fee left in bucket
-            openFeePercentage: 0 ether,                        // 0.15%
-            flashMintFee: 0.0025 ether,                        // 0.25%
-            flashBorrowFee: 0.0025 ether                       // 0.25%
+            openFeePercentage: 0 ether, // 0.15%
+            flashMintFee: 0.0025 ether, // 0.25%
+            flashBorrowFee: 0.0025 ether // 0.25%
         });
         nectra.initialize(p);
 
@@ -115,31 +115,32 @@ contract RedemptionBufferSimulation is Test {
         uint256 liquidityAmount = 10 ether;
         deal(liquidityProvider, liquidityAmount); // 10 cBTC
         vm.startPrank(liquidityProvider);
-          wcbtc.deposit{value: liquidityAmount}(); // Convert cBTC to WCBTC
-          wcbtc.transfer(address(dex), liquidityAmount); // Give DEX 10 WCBTC
+        wcbtc.deposit{value: liquidityAmount}(); // Convert cBTC to WCBTC
+        wcbtc.transfer(address(dex), liquidityAmount); // Give DEX 10 WCBTC
         vm.stopPrank();
 
         // Give DEX mock some USDC to handle swaps
-        usdc.mint(address(dex), 1_000_000 * 10 ** 6);     // 1M USDC for liquidity
+        usdc.mint(address(dex), 1_000_000 * 10 ** 6); // 1M USDC for liquidity
         // Give DEX some nUSD from "other users"
         vm.prank(otherUser);
         nusd.transfer(address(dex), 1_000_000 * UNIT); // Give DEX 1M nUSD for liquidity
     }
 
     function test_simulateBufferRestoration_limits() public {
-        uint256 lo = 0;          // 0%
-        uint256 hi = 0.11 ether;  // 0.1% cap
+        uint256 lo = 0; // 0%
+        uint256 hi = 0.11 ether; // 0.1% cap
 
         // binary search maximum slippage that still lets buffer restore using direct nUSD->WCBTC
         for (uint256 i = 0; i < 100; i++) {
             uint256 snapshot = vm.snapshotState();
             // perform a redemption first: burns otherUser nUSD, reduces bucket debt and removes some collateral
             uint256 redemptionFee = nectra.getRedemptionFee(redemptionVolumePerDay);
-            (uint256 collateralInOtherPosition, uint256 debtInOtherPosition,) = nectraExternal.getPosition(otherUserTokenId);
+            (uint256 collateralInOtherPosition, uint256 debtInOtherPosition,) =
+                nectraExternal.getPosition(otherUserTokenId);
             (uint256 collateralInPosition, uint256 debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
-            
+
             vm.prank(otherUser);
-                uint256 collateralRedeemed = nectra.redeem(redemptionVolumePerDay, 0);
+            uint256 collateralRedeemed = nectra.redeem(redemptionVolumePerDay, 0);
 
             (collateralInOtherPosition, debtInOtherPosition,) = nectraExternal.getPosition(otherUserTokenId);
 
@@ -174,10 +175,10 @@ contract RedemptionBufferSimulation is Test {
     }
 
     function _tryRestoreDirect() internal returns (bool) {
-        // Simplified: assume redemption spent redemptionVolumePerDay nUSD; 
+        // Simplified: assume redemption spent redemptionVolumePerDay nUSD;
         // treasury swaps nUSD to restore the redeemed collateral from the buffer;
         // treasury deposits the received cBTC into Nectra and borrows nUSD to restore
-        // the nUSD used to pay for the swap. The redemption fee left in the position 
+        // the nUSD used to pay for the swap. The redemption fee left in the position
         // should be enough to cover the fee and slippage for the swap.
 
         (uint256 collateralInPosition, uint256 debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
@@ -185,55 +186,54 @@ contract RedemptionBufferSimulation is Test {
         uint256 amountToRestore = treasuryCollateral - collateralInPosition;
 
         vm.startPrank(treasury);
-          // quote to determine the amount of nUSD needed to swap for the redeemed collateral
-          (,uint256 nUSDToSwap,,,,) = dex.quoteExactOutputSingle(
-              IQuoterV2.QuoteExactOutputSingleParams({ 
-                  tokenIn: address(nusd), 
-                  tokenOut: address(wcbtc), 
-                  deployer: address(0), 
-                  amount: amountToRestore, 
-                  limitSqrtPrice: 0 
-              })
-          );
-          
-          // if the quote exceeds the redemption volume, the swap fee + slippage will exceed the redemption fee
-          if (nUSDToSwap >= redemptionVolumePerDay) { 
-              vm.stopPrank(); 
-              return false; 
-          }
+        // quote to determine the amount of nUSD needed to swap for the redeemed collateral
+        (, uint256 nUSDToSwap,,,,) = dex.quoteExactOutputSingle(
+            IQuoterV2.QuoteExactOutputSingleParams({
+                tokenIn: address(nusd),
+                tokenOut: address(wcbtc),
+                deployer: address(0),
+                amount: amountToRestore,
+                limitSqrtPrice: 0
+            })
+        );
 
-          // approve quoted nUSD for swap
-          nusd.approve(address(dex), nUSDToSwap); 
-          // swap quoted amount of nUSD for WCBTC       
-          ISwapRouter.ExactOutputSingleParams memory pIn = ISwapRouter.ExactOutputSingleParams({
-              tokenIn: address(nusd), 
-              tokenOut: address(wcbtc), 
-              deployer: address(0), 
-              recipient: treasury, 
-              deadline: block.timestamp + 300, 
-              amountOut: amountToRestore, 
-              amountInMaximum: nUSDToSwap, 
-              limitSqrtPrice: 0
-          });
+        // if the quote exceeds the redemption volume, the swap fee + slippage will exceed the redemption fee
+        if (nUSDToSwap >= redemptionVolumePerDay) {
+            vm.stopPrank();
+            return false;
+        }
 
-          uint256 amountSpent = dex.exactOutputSingle(pIn);
+        // approve quoted nUSD for swap
+        nusd.approve(address(dex), nUSDToSwap);
+        // swap quoted amount of nUSD for WCBTC
+        ISwapRouter.ExactOutputSingleParams memory pIn = ISwapRouter.ExactOutputSingleParams({
+            tokenIn: address(nusd),
+            tokenOut: address(wcbtc),
+            deployer: address(0),
+            recipient: treasury,
+            deadline: block.timestamp + 300,
+            amountOut: amountToRestore,
+            amountInMaximum: nUSDToSwap,
+            limitSqrtPrice: 0
+        });
 
-          // unwrap and restore position
-          wcbtc.approve(address(wcbtc), amountToRestore);
-          wcbtc.withdraw(amountToRestore);
-          nectra.modifyPosition{value: amountToRestore}(treasuryTokenId, int256(amountToRestore), int256(nUSDToSwap), "");
-          vm.stopPrank();
+        uint256 amountSpent = dex.exactOutputSingle(pIn);
 
-          (collateralInPosition, debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
-          uint256 finalNusdBal = nusd.balanceOf(treasury);
+        // unwrap and restore position
+        wcbtc.approve(address(wcbtc), amountToRestore);
+        wcbtc.withdraw(amountToRestore);
+        nectra.modifyPosition{value: amountToRestore}(treasuryTokenId, int256(amountToRestore), int256(nUSDToSwap), "");
+        vm.stopPrank();
 
-          // profitable or break even if:
-          // 1. collateral has increased or is the same
-          // 2. debt is decreased or is the same
-          // 3. nUSD balance has increased of is the same
-          return collateralInPosition >= treasuryCollateral 
-                    && debtInPosition <= treasuryDebt
-                    && finalNusdBal >= treasuryDebt;
+        (collateralInPosition, debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
+        uint256 finalNusdBal = nusd.balanceOf(treasury);
+
+        // profitable or break even if:
+        // 1. collateral has increased or is the same
+        // 2. debt is decreased or is the same
+        // 3. nUSD balance has increased of is the same
+        return
+            collateralInPosition >= treasuryCollateral && debtInPosition <= treasuryDebt && finalNusdBal >= treasuryDebt;
     }
 
     function _tryRestoreViaUSDC(uint256) internal returns (bool) {
@@ -241,46 +241,84 @@ contract RedemptionBufferSimulation is Test {
         vm.startPrank(treasury);
         nusd.approve(address(dex), redemptionVolumePerDay);
         // hop 1
-        (uint256 outUSDC,, , , ,) = dex.quoteExactInputSingle(
-            IQuoterV2.QuoteExactInputSingleParams({ tokenIn: address(nusd), tokenOut: address(dex.USDC()), deployer: address(0), amountIn: redemptionVolumePerDay, limitSqrtPrice: 0 })
+        (uint256 outUSDC,,,,,) = dex.quoteExactInputSingle(
+            IQuoterV2.QuoteExactInputSingleParams({
+                tokenIn: address(nusd),
+                tokenOut: address(dex.USDC()),
+                deployer: address(0),
+                amountIn: redemptionVolumePerDay,
+                limitSqrtPrice: 0
+            })
         );
-        if (outUSDC == 0) { vm.stopPrank(); return false; }
+        if (outUSDC == 0) {
+            vm.stopPrank();
+            return false;
+        }
         ISwapRouter.ExactInputSingleParams memory p1 = ISwapRouter.ExactInputSingleParams({
-            tokenIn: address(nusd), tokenOut: address(dex.USDC()), deployer: address(0), recipient: treasury, deadline: block.timestamp + 300, amountIn: redemptionVolumePerDay, amountOutMinimum: outUSDC * 99 / 100, limitSqrtPrice: 0
+            tokenIn: address(nusd),
+            tokenOut: address(dex.USDC()),
+            deployer: address(0),
+            recipient: treasury,
+            deadline: block.timestamp + 300,
+            amountIn: redemptionVolumePerDay,
+            amountOutMinimum: outUSDC * 99 / 100,
+            limitSqrtPrice: 0
         });
         try dex.exactInputSingle(p1) returns (uint256 gotUSDC) {
             // hop 2
             IERC20(dex.USDC()).approve(address(dex), gotUSDC);
-            (uint256 outW,, , , ,) = dex.quoteExactInputSingle(
-                IQuoterV2.QuoteExactInputSingleParams({ tokenIn: address(dex.USDC()), tokenOut: address(wcbtc), deployer: address(0), amountIn: gotUSDC, limitSqrtPrice: 0 })
+            (uint256 outW,,,,,) = dex.quoteExactInputSingle(
+                IQuoterV2.QuoteExactInputSingleParams({
+                    tokenIn: address(dex.USDC()),
+                    tokenOut: address(wcbtc),
+                    deployer: address(0),
+                    amountIn: gotUSDC,
+                    limitSqrtPrice: 0
+                })
             );
-            if (outW == 0) { vm.stopPrank(); return false; }
+            if (outW == 0) {
+                vm.stopPrank();
+                return false;
+            }
             ISwapRouter.ExactInputSingleParams memory p2 = ISwapRouter.ExactInputSingleParams({
-                tokenIn: address(dex.USDC()), tokenOut: address(wcbtc), deployer: address(0), recipient: treasury, deadline: block.timestamp + 300, amountIn: gotUSDC, amountOutMinimum: outW * 99 / 100, limitSqrtPrice: 0
+                tokenIn: address(dex.USDC()),
+                tokenOut: address(wcbtc),
+                deployer: address(0),
+                recipient: treasury,
+                deadline: block.timestamp + 300,
+                amountIn: gotUSDC,
+                amountOutMinimum: outW * 99 / 100,
+                limitSqrtPrice: 0
             });
             try dex.exactInputSingle(p2) returns (uint256 gotW) {
                 vm.stopPrank();
                 return gotW >= outW * 99 / 100;
-            } catch { vm.stopPrank(); return false; }
-        } catch { vm.stopPrank(); return false; }
+            } catch {
+                vm.stopPrank();
+                return false;
+            }
+        } catch {
+            vm.stopPrank();
+            return false;
+        }
     }
 
-
-    function _openPosition(address who, uint256 collateralCBTC, int256 debtNUSD, uint256 rate) internal returns (uint256) {
+    function _openPosition(address who, uint256 collateralCBTC, int256 debtNUSD, uint256 rate)
+        internal
+        returns (uint256)
+    {
         uint256 currentSysInterestRate = nectra.getSystemInterestRate();
 
         // open position at specified interest rate
         nectra.storeSystemInterestRate(rate);
-        
+
         vm.deal(who, collateralCBTC);
         vm.prank(who);
-          (uint256 tokenId,, , ,) = nectra.modifyPosition{value: collateralCBTC}(0, int256(collateralCBTC), debtNUSD, "");
-        
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralCBTC}(0, int256(collateralCBTC), debtNUSD, "");
+
         // restore system interest rate
         nectra.storeSystemInterestRate(currentSysInterestRate);
 
         return tokenId;
     }
 }
-
-

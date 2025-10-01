@@ -345,8 +345,9 @@ contract NectraBase {
     /// @dev Updates bucket storage with the final state values
     /// @param bucket The final bucket state to store
     function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
-        NectraCoreStorage.Bucket storage _b = _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]];
-        
+        NectraCoreStorage.Bucket storage _b =
+            _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]];
+
         if (_b.globalDebtShares == 0 && bucket.globalDebtShares > 0) {
             // bucket has new debt, update active bucket trackers
             uint256 bucketBitMask = _bucketBitMask(bucket.interestRate);
@@ -354,7 +355,6 @@ contract NectraBase {
             _storeBucketBitMask(bucket.interestRate, bucketBitMask);
 
             _storeNumActiveBuckets(_numActiveBuckets() + 1);
-
         } else if (_b.globalDebtShares > 0 && bucket.globalDebtShares == 0) {
             // bucket debt cleared, update active bucket trackers
             uint256 bucketBitMask = _bucketBitMask(bucket.interestRate);
@@ -444,8 +444,14 @@ contract NectraBase {
     /// @notice Sets the system set interest rate
     /// @param systemInterestRate The system set interest rate to set
     function _storeSystemInterestRate(uint256 systemInterestRate) internal {
-        require(systemInterestRate <= _systemConfig().MAXIMUM_INTEREST_RATE, InterestRateTooHigh(systemInterestRate, _systemConfig().MAXIMUM_INTEREST_RATE));
-        require(systemInterestRate >= _systemConfig().MINIMUM_INTEREST_RATE, InterestRateTooLow(systemInterestRate, _systemConfig().MINIMUM_INTEREST_RATE));
+        require(
+            systemInterestRate <= _systemConfig().MAXIMUM_INTEREST_RATE,
+            InterestRateTooHigh(systemInterestRate, _systemConfig().MAXIMUM_INTEREST_RATE)
+        );
+        require(
+            systemInterestRate >= _systemConfig().MINIMUM_INTEREST_RATE,
+            InterestRateTooLow(systemInterestRate, _systemConfig().MINIMUM_INTEREST_RATE)
+        );
         require(systemInterestRate % _systemConfig().INTEREST_RATE_INCREMENT == 0, InvalidInterestRate());
 
         _systemConfig().SYSTEM_INTEREST_RATE = systemInterestRate;

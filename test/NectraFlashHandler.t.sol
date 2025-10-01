@@ -156,7 +156,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
         nectraNFT.authorize(tokenId, address(flashHandler), permissionBitmask);
 
         vm.prank(user);
-        uint256 returnedTokenId = flashHandler.increasePositionExposure{value: additionalValue}(tokenId, newDesiredCollateral, newMaxDebt, user);
+        uint256 returnedTokenId = flashHandler.increasePositionExposure{value: additionalValue}(
+            tokenId, newDesiredCollateral, newMaxDebt, user
+        );
 
         // Verify same token ID returned
         assertEq(returnedTokenId, tokenId, "Should return same token ID");
@@ -175,8 +177,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
     function test_increasePositionExposure_revertIfDesiredCollateralTooLow() public {
         uint256 msgValue = 1 ether;
         uint256 desiredCollateral = 1 ether; // Equal to msg.value (should be greater)
-        uint256 maxDebt =
-            BTC_PRICE * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+        uint256 maxDebt = BTC_PRICE
+            * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.prank(user);
         vm.expectRevert(
@@ -219,7 +221,9 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
         vm.prank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), systemParams.issuanceRatio)
+            abi.encodeWithSelector(
+                NectraFlashHandler.IssuanceRatioExceeded.selector, uint256(0), systemParams.issuanceRatio
+            )
         );
         flashHandler.increasePositionExposure{value: msgValue}(0, desiredCollateral, maxDebt, user);
     }
@@ -516,8 +520,8 @@ contract NectraFlashHandlerTest is NectraBaseTest {
 
     function test_increasePositionExposure_revertIfInvalidPositionId() public {
         uint256 invalidTokenId = 999;
-        uint256 maxDebt =
-            BTC_PRICE * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
+        uint256 maxDebt = BTC_PRICE
+            * (UNIT + systemParams.openFeePercentage + systemParams.flashBorrowFee + dexFeesAndSlippage) / UNIT;
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(NectraFlashHandler.InvalidPositionId.selector, invalidTokenId));

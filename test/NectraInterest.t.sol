@@ -10,8 +10,8 @@ import {NectraLib} from "src/NectraLib.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
 
 contract NectraInterestTest is NectraBaseTest {
-
     uint256 internal defaultInterestRate = 0.1 ether;
+
     function setUp() public virtual override {
         systemParams.openFeePercentage = 0;
         super.setUp();
@@ -57,9 +57,7 @@ contract NectraInterestTest is NectraBaseTest {
         assertApproxEqAbs(nectraExternal.getPositionDebt(tokenId), 100.1829538 ether, 1e11); // 7 decimals
 
         nectraUSD.approve(address(nectra), nectraExternal.getPositionDebt(tokenId) - 100 ether);
-        nectra.modifyPosition(
-            tokenId, 0 ether, -int256(nectraExternal.getPositionDebt(tokenId) - 100 ether), ""
-        );
+        nectra.modifyPosition(tokenId, 0 ether, -int256(nectraExternal.getPositionDebt(tokenId) - 100 ether), "");
 
         _test_interest(tokenId, true);
     }

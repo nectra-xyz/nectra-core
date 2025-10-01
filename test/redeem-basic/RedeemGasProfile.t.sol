@@ -15,14 +15,16 @@ contract RedeemGasProfileTest is NectraBaseTest {
         }
 
         for (uint256 i = 0; i < 60; i++) {
-            nectra.storeSystemInterestRate(systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement);
+            nectra.storeSystemInterestRate(
+                systemParams.minimumInterestRate + (i + 256) * systemParams.interestRateIncrement
+            );
             nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 
         nectra.storeSystemInterestRate(systemParams.maximumInterestRate);
         nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
 
-        nectra.storeSystemInterestRate(systemParams.minimumInterestRate + 255 * systemParams.interestRateIncrement);    
+        nectra.storeSystemInterestRate(systemParams.minimumInterestRate + 255 * systemParams.interestRateIncrement);
     }
 
     function test_gas_profile_redeem() public {

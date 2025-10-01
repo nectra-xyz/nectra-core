@@ -163,12 +163,8 @@ contract NectraExternal {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             (uint256 collateral, uint256 debt, uint256 interestRate) = getPosition(tokenIds[i]);
 
-            positions[i] = PositionData({
-                tokenId: tokenIds[i],
-                collateral: collateral,
-                debt: debt,
-                interestRate: interestRate
-            });
+            positions[i] =
+                PositionData({tokenId: tokenIds[i], collateral: collateral, debt: debt, interestRate: interestRate});
         }
         return positions;
     }

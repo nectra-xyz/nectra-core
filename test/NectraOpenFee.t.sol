@@ -18,7 +18,6 @@ contract NectraOpenFeeTest is NectraBaseTest {
         uint256 expectedDebt = 100 ether + 100 ether * systemParams.openFeePercentage / UNIT;
         _checkPosition(tokenId, 1000 ether, expectedDebt, 0.1 ether);
 
-
         // increase debt
         nectra.modifyPosition(tokenId, 0 ether, 100 ether, "");
 

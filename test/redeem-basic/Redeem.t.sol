@@ -69,7 +69,7 @@ contract NectraRedeemTest is RedeemBaseTest {
     function test_redeem_ShouldApplyInterestToBuckets() public {
         // set system interest rate slightly higher than 0.05 ether
         nectra.storeSystemInterestRate(0.05 ether + systemParams.interestRateIncrement);
-        
+
         vm.warp(vm.getBlockTimestamp() + 31 days);
 
         nectra.redeem(10 ether, 0 ether);
@@ -199,7 +199,7 @@ contract NectraRedeemTest is RedeemBaseTest {
             nectraExternal.getBucketDebt(HIGH_INTEREST_RATE), initialHighBucketDebt, "High bucket should be unchanged"
         );
 
-        // close position at low interest rate        
+        // close position at low interest rate
         nectra.modifyPosition(tokenIdLow, type(int256).min, type(int256).min, "");
 
         // set system interest rate to slightly higher than high interest rate to redeem from high bucket
@@ -225,7 +225,8 @@ contract NectraRedeemTest is RedeemBaseTest {
         uint256 initialNUSDBalance = nectraUSD.balanceOf(address(this));
 
         nectra.storeSystemInterestRate(LOWEST_INTEREST_RATE);
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(debtAmount), "");
+        (uint256 tokenId,,,,) =
+            nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(debtAmount), "");
 
         uint256 postPositionETHBalance = address(this).balance;
         uint256 postPositionNUSDBalance = nectraUSD.balanceOf(address(this));
@@ -300,7 +301,8 @@ contract NectraRedeemTest is RedeemBaseTest {
         assertApproxEqAbs(nectraExternal.getBucketDebt(interestRates[0]), 0 ether, 1);
 
         nectra.storeSystemInterestRate(interestRates[0]);
-        (, int256 _collateral, int256 _debt,,) = nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
+        (, int256 _collateral, int256 _debt,,) =
+            nectra.modifyPosition(tokens[1], type(int256).min, type(int256).min, "");
 
         assertApproxEqRel(_collateral, -70.833333333333333 ether, 1e11); // 100 - 35 / 1.2
         assertApproxEqAbs(_debt, 0 ether, 1);

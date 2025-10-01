@@ -32,7 +32,7 @@ contract NectraInterestExistingTest is NectraInterestTest {
         // 10 = x * 110 / (135.10017699094445 + 110)
         // x = 10 / (110 / (135.10017699094445 + 110))
         // x = 22.28183427190404
-        
+
         // set system interest rate slightly above 10% so only the 10% bucket is redeemed
         nectra.storeSystemInterestRate(0.1 ether + systemParams.interestRateIncrement);
         nectra.redeem(22.28183427190404 ether, 0);

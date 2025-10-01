@@ -31,8 +31,7 @@ contract SatsumaHandlerTest is Test {
 
         // Deploy tokens
         address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NUSDToken()),
-            abi.encodeCall(NUSDToken.initialize, (address(this), nectra))
+            address(new NUSDToken()), abi.encodeCall(NUSDToken.initialize, (address(this), nectra))
         );
         nusd = NUSDToken(nusdProxy);
 

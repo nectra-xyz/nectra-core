@@ -532,8 +532,7 @@ contract NectraNFTTest is NectraBaseTest {
     function test_should_increase_list_size_when_token_is_minted() public {
         // Mint a new token
         vm.prank(whale);
-        (whalePositionIds[whaleNumPositions],,,,) =
-            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
+        (whalePositionIds[whaleNumPositions],,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         whaleNumPositions++;
 
         uint256[] memory tokenIds = nectraNFT.getTokenIdsForAddress(whale);

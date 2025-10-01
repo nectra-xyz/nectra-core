@@ -30,11 +30,13 @@ contract RedeemInsolventBucketTest is NectraBaseTest {
         uint256 collateralAmount = 10 ether;
         uint256 collateralValue = collateralAmount.mulWad(currentPrice);
         uint256 maxDebt = collateralValue.divWad(systemParams.issuanceRatio);
-        uint256 targetPrice = systemParams.fullLiquidationRatio.mulWad(1 ether + systemParams.openFeePercentage).mulWad(maxDebt).divWad(collateralAmount);
+        uint256 targetPrice = systemParams.fullLiquidationRatio.mulWad(1 ether + systemParams.openFeePercentage).mulWad(
+            maxDebt
+        ).divWad(collateralAmount);
 
         // fill insolvent bucket with position that will be insolvent
         nectra.storeSystemInterestRate(INSOLVENT_BUCKET);
-        nectra.modifyPosition{ value: collateralAmount }(0, int256(collateralAmount), int256(maxDebt), "");
+        nectra.modifyPosition{value: collateralAmount}(0, int256(collateralAmount), int256(maxDebt), "");
 
         // make bucket insolvent by dropping price
         oracle.setCurrentPrice(targetPrice);

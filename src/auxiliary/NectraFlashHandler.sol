@@ -101,12 +101,11 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param recipient The address to receive the position NFT when creating a new position
     /// @return tokenId The token ID of the position
     /// @dev If tokenId is 0, a new position is created. If tokenId is not 0, the position is modified.
-    function increasePositionExposure(
-        uint256 tokenId,
-        uint256 desiredCollateral,
-        uint256 maxDebt,
-        address recipient
-    ) external payable returns (uint256) {
+    function increasePositionExposure(uint256 tokenId, uint256 desiredCollateral, uint256 maxDebt, address recipient)
+        external
+        payable
+        returns (uint256)
+    {
         uint256 existingPositionCollateral = 0;
 
         if (tokenId > 0) {
@@ -229,8 +228,7 @@ contract NectraFlashHandler is IFlashLoanSimpleReceiver {
     /// @param params The parameters for the flash borrow
     function _increasePositionExposure(uint256 amount, uint256 premium, bytes calldata params) internal {
         // Get params
-        (uint256 tokenId, uint256 desiredCollateral, uint256 maxDebt) =
-            abi.decode(params, (uint256, uint256, uint256));
+        (uint256 tokenId, uint256 desiredCollateral, uint256 maxDebt) = abi.decode(params, (uint256, uint256, uint256));
 
         uint256 swapAmountOut = amount + premium;
         // Slippage for the swap is not important because we limit the cost to maxDebt
