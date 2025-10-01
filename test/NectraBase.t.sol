@@ -91,6 +91,19 @@ abstract contract NectraBaseTest is Test {
         deal(address(this), 1_000_000 ether);
     }
 
+    function _createPosition(address user, uint256 collateral, uint256 debt, uint256 interestRate) internal returns (uint256 tokenId) {
+        vm.deal(user, collateral);
+        
+        uint256 currentInterestRate = nectra.getSystemInterestRate();
+        nectra.storeSystemInterestRate(interestRate);
+        
+        vm.prank(user);
+            (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
+        
+        // restore system interest rate
+        nectra.storeSystemInterestRate(currentInterestRate);
+    }
+
     function _checkPosition(
         uint256 tokenId,
         uint256 expectedCollateral,

@@ -4,7 +4,6 @@ pragma solidity ^0.8.23;
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {SafeCastLib} from "src/lib/SafeCastLib.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title NectraLib
 /// @notice Core library containing state update and calculation functions for the Nectra protocol

@@ -10,7 +10,6 @@ contract NectraInterestExistingTest is NectraInterestTest {
         // Open positions with different interest rates
         nectra.storeSystemInterestRate(0.1 ether);
         nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
-        nectra.storeSystemInterestRate(0.1 ether);
         nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 33 ether, "");
         nectra.storeSystemInterestRate(0.2 ether);
         nectra.modifyPosition{value: 800 ether}(0, 800 ether, 500 ether, "");
@@ -23,6 +22,7 @@ contract NectraInterestExistingTest is NectraInterestTest {
     }
 
     function test_should_accrue_interest_after_redemption() public override {
+        nectra.storeSystemInterestRate(0.1 ether);
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 110 ether, "");
 
         // 133 * math.exp(math.log(1 + 0.1) * 60 / 365)
@@ -32,6 +32,9 @@ contract NectraInterestExistingTest is NectraInterestTest {
         // 10 = x * 110 / (135.10017699094445 + 110)
         // x = 10 / (110 / (135.10017699094445 + 110))
         // x = 22.28183427190404
+        
+        // set system interest rate slightly above 10% so only the 10% bucket is redeemed
+        nectra.storeSystemInterestRate(0.1 ether + systemParams.interestRateIncrement);
         nectra.redeem(22.28183427190404 ether, 0);
 
         _test_interest(tokenId, true);

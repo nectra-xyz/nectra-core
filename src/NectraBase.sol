@@ -324,21 +324,6 @@ contract NectraBase {
         NectraLib.BucketState memory bucket,
         NectraLib.GlobalState memory global
     ) internal {
-        uint256 bucketBitMask = _bucketBitMask(position.interestRate);
-        uint256 numActiveBuckets = _numActiveBuckets();
-        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) > 0) {
-            // set the bit in the bucket bit mask
-            bucketBitMask |= (1 << (_getBucketIndex(position.interestRate) % 256));
-            // TODO this is a bug, we should only increment when the bucket is new.
-            // numActiveBuckets++;
-        } else {
-            // clear the bit in the bucket bit mask
-            bucketBitMask &= ~(1 << (_getBucketIndex(position.interestRate) % 256));
-            numActiveBuckets--;
-        }
-        _storeBucketBitMask(position.interestRate, bucketBitMask);
-        _storeNumActiveBuckets(numActiveBuckets);
-
         _core()._positions[position.tokenId] = NectraCoreStorage.Position({
             interestRate: position.interestRate,
             bucketEpoch: position.bucketEpoch,
@@ -348,18 +333,41 @@ contract NectraBase {
             lastBucketAccumulatedRedeemedCollateralPerShare: position.lastBucketAccumulatedRedeemedCollateralPerShare
         });
 
-        _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]] = NectraCoreStorage.Bucket({
-            collateral: bucket.collateral,
-            totalDebtShares: bucket.totalDebtShares,
-            globalDebtShares: bucket.globalDebtShares,
-            accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
-            accumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            lastGlobalAccumulatedLiquidatedCollateralPerShare: bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare,
-            lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
-            lastUpdateTime: bucket.lastUpdateTime
-        });
-
+        _finalizeBucket(bucket);
         _finalizeGlobal(global);
+    }
+
+    /// @notice Finalizes bucket state changes
+    /// @dev Updates bucket storage with the final state values
+    /// @param bucket The final bucket state to store
+    function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
+        NectraCoreStorage.Bucket storage _b = _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]];
+        
+        if (_b.globalDebtShares == 0 && bucket.globalDebtShares > 0) {
+            // bucket has new debt, update active bucket trackers
+            uint256 bucketBitMask = _bucketBitMask(bucket.interestRate);
+            bucketBitMask |= (1 << (_getBucketIndex(bucket.interestRate) % 256));
+            _storeBucketBitMask(bucket.interestRate, bucketBitMask);
+
+            _storeNumActiveBuckets(_numActiveBuckets() + 1);
+
+        } else if (_b.globalDebtShares > 0 && bucket.globalDebtShares == 0) {
+            // bucket debt cleared, update active bucket trackers
+            uint256 bucketBitMask = _bucketBitMask(bucket.interestRate);
+            bucketBitMask &= ~(1 << (_getBucketIndex(bucket.interestRate) % 256));
+            _storeBucketBitMask(bucket.interestRate, bucketBitMask);
+
+            _storeNumActiveBuckets(_numActiveBuckets() - 1);
+        }
+
+        _b.collateral = bucket.collateral;
+        _b.totalDebtShares = bucket.totalDebtShares;
+        _b.globalDebtShares = bucket.globalDebtShares;
+        _b.accumulatedLiquidatedCollateralPerShare = bucket.accumulatedLiquidatedCollateralPerShare;
+        _b.accumulatedRedeemedCollateralPerShare = bucket.accumulatedRedeemedCollateralPerShare;
+        _b.lastGlobalAccumulatedLiquidatedCollateralPerShare = bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare;
+        _b.lastGlobalAccumulatedLiquidatedDebtPerShare = bucket.lastGlobalAccumulatedLiquidatedDebtPerShare;
+        _b.lastUpdateTime = bucket.lastUpdateTime;
     }
 
     /// @notice Finalizes global state changes and handles fee distribution
@@ -377,22 +385,6 @@ contract NectraBase {
             NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(_systemConfig().FEE_RECIPIENT_ADDRESS, global.fees);
             global.fees = 0; // reset fees after minting
         }
-    }
-
-    /// @notice Finalizes bucket state changes
-    /// @dev Updates bucket storage with the final state values
-    /// @param bucket The final bucket state to store
-    function _finalizeBucket(NectraLib.BucketState memory bucket) internal {
-        _core()._buckets[bucket.interestRate][_core()._epochs[bucket.interestRate]] = NectraCoreStorage.Bucket({
-            collateral: bucket.collateral,
-            totalDebtShares: bucket.totalDebtShares,
-            globalDebtShares: bucket.globalDebtShares,
-            accumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
-            accumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            lastGlobalAccumulatedLiquidatedCollateralPerShare: bucket.lastGlobalAccumulatedLiquidatedCollateralPerShare,
-            lastGlobalAccumulatedLiquidatedDebtPerShare: bucket.lastGlobalAccumulatedLiquidatedDebtPerShare,
-            lastUpdateTime: bucket.lastUpdateTime
-        });
     }
 
     /// @notice Calculates the index of a bucket based on its interest rate

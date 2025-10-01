@@ -128,22 +128,14 @@ contract NectraLiquidateFullExistingTest is NectraBaseTest {
         uint256 expectedGlobalDebt = globalDebtBefore + systemParams.fullLiquidationFee;
         uint256 bucketUnrealizedLiquidatedDebt = totalDebtChange * bucketAfter.globalDebtShares / globalStateAfter.totalDebtShares;
         uint256 expectedBucketDebt = bucketDebtBefore - debt + bucketUnrealizedLiquidatedDebt;
-        uint256 expectedCollateralPerShare = globalStateBefore.accumulatedLiquidatedCollateralPerShare + collateral.divWad(globalStateBefore.totalDebtShares);
-        uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare + totalDebtChange.divWad(globalStateBefore.totalDebtShares);
+        uint256 expectedCollateralPerShare = globalStateBefore.accumulatedLiquidatedCollateralPerShare + collateral.divWad(globalStateAfter.totalDebtShares);
+        uint256 expectedDebtPerShare = globalStateBefore.accumulatedLiquidatedDebtPerShare + totalDebtChange.divWad(globalStateAfter.totalDebtShares);
 
         assertEq(globalDebtAfter, expectedGlobalDebt, "global debt not deducted correctly");
         assertEq(bucketDebtAfter, expectedBucketDebt, "bucket debt not deducted correctly");
-        console2.log("globalStateAfter.accumulatedLiquidatedCollateralPerShare", globalStateAfter.accumulatedLiquidatedCollateralPerShare);
-        console2.log("expectedCollateralPerShare", expectedCollateralPerShare);
-        console2.log("globalStateBefore.accumulatedLiquidatedCollateralPerShare", globalStateBefore.accumulatedLiquidatedCollateralPerShare);
-        console2.log("globalStateBefore.totalDebtShares", globalStateBefore.totalDebtShares);
-        console2.log("collateral", collateral);
-        console2.log("totalDebtChange", totalDebtChange);
-        console2.log("bucketAfter.globalDebtShares", bucketAfter.globalDebtShares);
-        console2.log("globalStateAfter.totalDebtShares", globalStateAfter.totalDebtShares);
-        // TODO
-        //assertEq(globalStateAfter.accumulatedLiquidatedCollateralPerShare, expectedCollateralPerShare, "global collateral per share not updated correctly");
-        // assertEq(globalStateAfter.accumulatedLiquidatedDebtPerShare, expectedDebtPerShare, "global debt per share not updated correctly");
+        
+        assertEq(globalStateAfter.accumulatedLiquidatedCollateralPerShare, expectedCollateralPerShare, "global collateral per share not updated correctly");
+        assertEq(globalStateAfter.accumulatedLiquidatedDebtPerShare, expectedDebtPerShare, "global debt per share not updated correctly");
 
         // check that bucket and global state are correct after updatePosition is called
         nectra.updatePosition(tokenId);

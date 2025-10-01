@@ -18,8 +18,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 /// @title Nectra
 /// @notice Core contract for managing collateralized debt positions
 /// @dev Handles position creation, modification, and management with interest rate buckets
@@ -142,6 +140,11 @@ contract Nectra is
             });
         }
 
+        // if bucket is new, increment the num active buckets
+        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && borrowOrRepay > 0) {
+            _storeNumActiveBuckets(_numActiveBuckets() + 1);
+        }
+
         uint256 effectiveDebt;
         (depositOrWithdraw, borrowOrRepay,, effectiveDebt) =
             _modifyPosition(position, bucket, oldBucket, global, depositOrWithdraw, borrowOrRepay, interestRate);
@@ -153,6 +156,7 @@ contract Nectra is
         if (oldBucket.lastUpdateTime != 0) {
             _finalizeBucket(oldBucket);
         }
+
         _finalize(position, bucket, global);
 
         if (borrowOrRepay > 0) {
@@ -219,6 +223,11 @@ contract Nectra is
         // set buffer position id and manager
         _storeRedemptionBufferPositionId(tokenId);
         _storeRedemptionBufferPositionManager(manager);
+
+        // if bucket is new, increment the num active buckets
+        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && debt > 0) {
+            _storeNumActiveBuckets(_numActiveBuckets() + 1);
+        }
 
         // create new position
         (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
@@ -332,11 +341,6 @@ contract Nectra is
             _requireFlashBorrowUnlocked();
         }
 
-        // if bucket is new, increment the num active buckets
-        if (NectraLib.calculateBucketDebt(bucket, global, NectraMathLib.Rounding.Up) == 0 && borrowOrRepay > 0) {
-            _storeNumActiveBuckets(_numActiveBuckets() + 1);
-        }
-
         uint256 fixedRateOpenFee = 0;
 
         // calculate fixed rate fee on new debt, excluding the buffer position
@@ -366,15 +370,16 @@ contract Nectra is
             collateralDiff: depositOrWithdraw,
             debtDiff: borrowOrRepay + int256(fixedRateOpenFee)
         });
+  
+        uint256 finalEffectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
 
-        // TODO: temporarily commented out for the buffer simulation. It will be added when the permissioned
-        // buffer positions are allowed at the 0% bucket
-        // migrate position to new bucket if interest rate changes and c-ratio is decreasing
-        // buffer position rate should always be 0 and not migrate
         if (
-            interestRate != position.interestRate && 
-            (borrowOrRepay > 0 || depositOrWithdraw < 0) //&&
-            //interestRate != 0
+            // only migrate if position has debt
+            finalEffectiveDebt > 0 &&
+            // only migrate if interest rate changes and not buffer position
+            (interestRate != position.interestRate) &&
+            // only migrate if position is decreasing c-ratio
+            (borrowOrRepay > 0 || depositOrWithdraw < 0)
         ) {
             NectraLib.copy(oldBucket, bucket);
             NectraLib.copy(bucket, _loadAndUpdateBucketState(interestRate, _core()._epochs[interestRate], global));
@@ -382,8 +387,7 @@ contract Nectra is
             NectraLib.migrateBucket({position: position, srcBucket: oldBucket, dstBucket: bucket, global: global});
         }
 
-        uint256 finalEffectiveDebt = uint256(int256(effectiveDebt) + borrowOrRepay);
-
+        // Final safety checks to ensure modification is valid
         require(
             position.collateral >= _systemConfig().MINIMUM_COLLATERAL || position.collateral == 0,
             MinimumDepositNotMet(position.collateral, _systemConfig().MINIMUM_COLLATERAL)

@@ -7,7 +7,7 @@ import {NectraRedeem} from "src/NectraRedeem.sol";
 import {NectraBase} from "src/NectraBase.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
-contract NectraRedeemInsolventBucketTest is NectraBaseTest {
+contract RedeemInsolventBucketTest is NectraBaseTest {
     using FixedPointMathLib for uint256;
 
     uint256 internal constant INSOLVENT_BUCKET = 0.033 ether;
@@ -25,7 +25,7 @@ contract NectraRedeemInsolventBucketTest is NectraBaseTest {
         nectraUSD.approve(address(nectra), type(uint256).max);
     }
 
-    function test_redemption_should_skip_if_bucket_is_insolvant() public {
+    function test_redeem_ShouldSkipIfBucketIsInsolvant() public {
         (uint256 currentPrice,) = oracle.getLatestPrice();
         uint256 collateralAmount = 10 ether;
         uint256 collateralValue = collateralAmount.mulWad(currentPrice);

@@ -6,7 +6,7 @@ import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
 import {NectraLib} from "src/NectraLib.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
-contract NectraRedeemBaseTest is NectraBaseTest {
+contract RedeemBaseTest is NectraBaseTest {
     using FixedPointMathLib for uint256;
 
     uint256[] internal tokens;

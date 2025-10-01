@@ -473,7 +473,6 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 cBTCReceived = address(this).balance - cBTCBalanceBefore;
         uint256 rewardAmount =
             cBTCReceived.mulWad(liquidationAmounts.liquidationPrice) - liquidationAmounts.debtToLiquidate;
-        console2.log("reward amount ", rewardAmount);
         assertLt(
             rewardAmount, systemParams.maximumLiquidatorReward, "Liquidator reward is not capped at maximum liquidator reward"
         );
@@ -491,7 +490,6 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         uint256 cratio = liquidationAmounts.initialCollateral.mulWad(liquidationAmounts.liquidationPrice).divWad(
             liquidationAmounts.initialDebt + liquidationAmounts.closingFee
         );
-        console2.log("cratio ", cratio);
 
         nectraUSD.approve(address(nectra), liquidationAmounts.debtToLiquidate);
         nectra.liquidate(tokenId);
@@ -549,7 +547,6 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
     }
 
     function test_should_allow_repay_when_position_is_liquidatable() public {
-        return;
         uint256 tokenId = tokens[1];
         PartialLiquidationAmounts memory liquidationAmounts = _calculatePartialLiquidationAmounts(tokenId, UNIT);
         uint256 nUSDBefore = nectraUSD.balanceOf(address(this));
@@ -562,9 +559,9 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
         // approve and repay debt to leave position in healthy state
         nectraUSD.approve(address(nectra), type(uint256).max);
 
-        uint256 newDebt = liquidationAmounts.initialDebt - 15 ether;
-        // TODO: just making these ints so that it will compile, the values will need to be deltas and not absolute values
-        nectra.modifyPosition(tokenId, int256(liquidationAmounts.initialCollateral), int256(newDebt), "");
+        uint256 debtDiff = 15 ether;
+        uint256 newDebt = liquidationAmounts.initialDebt - debtDiff;
+        nectra.modifyPosition(tokenId, 0, - int256(debtDiff), "");
 
         // check that position is in healthy state
         // NectraLib.PositionState memory positionState = nectra.getPositionState(tokenId);
@@ -574,7 +571,7 @@ contract NectraLiquidatePartialTest is NectraBaseTest {
             systemParams.issuanceRatio,
             "Position is not in healthy state"
         );
-        assertEq(nectraUSD.balanceOf(address(this)), nUSDBefore - 15 ether, "nUSD not burned correctly");
+        assertEq(nectraUSD.balanceOf(address(this)), nUSDBefore - debtDiff, "nUSD not burned correctly");
         _checkPosition(tokenId, liquidationAmounts.initialCollateral, newDebt, defaultInterestRate);
     }
 

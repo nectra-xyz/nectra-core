@@ -135,31 +135,21 @@ contract RedemptionBufferSimulation is Test {
             uint256 snapshot = vm.snapshotState();
             // perform a redemption first: burns otherUser nUSD, reduces bucket debt and removes some collateral
             uint256 redemptionFee = nectra.getRedemptionFee(redemptionVolumePerDay);
-
             (uint256 collateralInOtherPosition, uint256 debtInOtherPosition,) = nectraExternal.getPosition(otherUserTokenId);
-            // console.log("OtherPositionBefore: ", collateralInOtherPosition, debtInOtherPosition);
             (uint256 collateralInPosition, uint256 debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
-            // console.log("BufferPositionBefore: ", collateralInPosition, debtInPosition);
             
             vm.prank(otherUser);
                 uint256 collateralRedeemed = nectra.redeem(redemptionVolumePerDay, 0);
 
             (collateralInOtherPosition, debtInOtherPosition,) = nectraExternal.getPosition(otherUserTokenId);
-            // console.log("OtherPositionAfter: ", collateralInOtherPosition, debtInOtherPosition);
 
             // confirm redemption fee is in position
             (collateralInPosition, debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
-            // console.log("BufferPositionAfter: ", collateralInPosition, debtInPosition);
-            // console.log("redemptionFee:        ", redemptionFee);
-            // console.log("collateralRedeemed:   ", collateralRedeemed);
-            // console.log("collateralInPosition: ", collateralInPosition, treasuryCollateral - collateralRedeemed);
-            // console.log("debtInPosition:       ", debtInPosition, treasuryDebt - redemptionVolumePerDay);
 
             uint256 mid = (lo + hi) / 2;
             dex.setSlippageAndFees(mid);
 
             bool swapProfitable = _tryRestoreDirect();
-            // console.log("mid", mid, swapProfitable);
             // revert to snapshot to restore state for next iteration
             vm.revertToState(snapshot);
 
@@ -236,10 +226,6 @@ contract RedemptionBufferSimulation is Test {
 
           (collateralInPosition, debtInPosition,) = nectraExternal.getPosition(treasuryTokenId);
           uint256 finalNusdBal = nusd.balanceOf(treasury);
-
-          // console.log("final collateral: ", collateralInPosition);
-          // console.log("final debt:       ", debtInPosition);
-          // console.log("final nUSD Bal:   ", finalNusdBal);
 
           // profitable or break even if:
           // 1. collateral has increased or is the same

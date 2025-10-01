@@ -11,8 +11,6 @@ import {IERC20} from "src/interfaces/IERC20.sol";
 
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-import {console} from "forge-std/console.sol";
-
 contract SatsumaHandlerTest is Test {
     uint256 constant UNIT = 1 ether;
     uint256 constant BTC_PRICE = 65000 * UNIT; // $65,000 per BTC

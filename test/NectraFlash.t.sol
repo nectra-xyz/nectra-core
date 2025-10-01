@@ -257,7 +257,6 @@ contract NectraFlashTest is NectraBaseTest {
         nectra.repayFlashBorrow{value: 1 ether}();
     }
 
-    // TODO: making this compile by forcing ints but the values are now supposed to be deltas not absolute so it will fail
     function test_flashBorrowCanBeUsedForCollateral() public {
         // Borrow all of Nectra's cBTC balance
         callbackParams.borrowAmount = address(nectra).balance;

@@ -22,6 +22,7 @@ contract NectraModifyPositionTest is NectraBaseTest {
     address notOwner = makeAddr("notOwner");
 
     function setUp() public virtual override {
+        systemParams.minimumInterestRate = 0.0001 ether;
         super.setUp();
 
         defaultInterestRate = nectra.getSystemInterestRate();
