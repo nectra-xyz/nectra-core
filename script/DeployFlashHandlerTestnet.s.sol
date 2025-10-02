@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraFlashHandler} from "src/auxiliary/NectraFlashHandler.sol";
 import {SatsumaHandler} from "src/auxiliary/SatsumaHandler.sol";
 import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
+import {NectraFlashHandler} from "src/auxiliary/NectraFlashHandler.sol";
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
 contract DeployFlashHandlerTestnet is Script {
-    uint256 deployerPrivateKey = vm.envUint("TESTNET_PRIVATE_KEY");
+    uint256 deployerPrivateKey = vm.envUint("NECTRA_DEPLOYER_PRIVATE_KEY");
     address public deployer = vm.addr(deployerPrivateKey);
 
     // Nectra Deployment
@@ -32,7 +32,9 @@ contract DeployFlashHandlerTestnet is Script {
         console.log("Deployer:     ", deployer);
 
         // Deploy new NectraExternal
-        nectraExternal = new NectraExternal(nectra, nectraNFT);
+        // nectraExternal = new NectraExternal(nectra, nectraNFT);
+        // TODO: Change to the actual address
+        nectraExternal = NectraExternal(0x0000000000000000000000000000000000000000);
 
         // Deploy the SatsumaDex Handler
         satsumaHandler = new SatsumaHandler(swapRouter, quoter, nUSD, WCBTC);

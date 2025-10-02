@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
-import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
-import {SafeCastLib} from "src/lib/SafeCastLib.sol";
 import {NectraLib} from "src/NectraLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
 import {NectraBase} from "src/NectraBase.sol";
 import {NectraViews} from "src/NectraViews.sol";
-import {NectraRedeem} from "src/NectraRedeem.sol";
-import {NectraLiquidate} from "src/NectraLiquidate.sol";
-import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NectraFlash} from "src/NectraFlash.sol";
+import {NectraRedeem} from "src/NectraRedeem.sol";
+import {NectraMathLib} from "src/NectraMathLib.sol";
+import {NectraLiquidate} from "src/NectraLiquidate.sol";
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Ownable} from "src/lib/Ownable.sol";
+import {SafeCastLib} from "src/lib/SafeCastLib.sol";
+import {Initializable} from "src/lib/Initializable.sol";
+import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
+import {UUPSUpgradeable} from "src/lib/UUPSUpgradeable.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
 /// @title Nectra
 /// @notice Core contract for managing collateralized debt positions
@@ -28,8 +28,8 @@ contract Nectra is
     NectraLiquidate,
     NectraFlash,
     NectraViews,
+    Ownable,
     Initializable,
-    OwnableUpgradeable,
     UUPSUpgradeable
 {
     using NectraMathLib for uint256;
@@ -78,12 +78,14 @@ contract Nectra is
     /// @param redemptionBufferPositionManager The redemption buffer position manager
     event RedemptionBufferPositionManagerSet(address redemptionBufferPositionManager);
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @param params System parameters defined in NectraBase
     function initialize(SystemParams memory params) public initializer {
         setSystemParams(params);
-
-        __Ownable_init(msg.sender);
-        __UUPSUpgradeable_init();
+        _initializeOwner(msg.sender);
     }
 
     /// @notice Creates, modifies or closes a collateralized debt position
@@ -497,6 +499,12 @@ contract Nectra is
         _storeRedemptionBufferPositionManager(redemptionBufferPositionManager);
 
         emit RedemptionBufferPositionManagerSet(redemptionBufferPositionManager);
+    }
+
+    /// @notice Prevent double initialization of the owner.
+    /// @dev do not remove this function during future upgrades
+    function _guardInitializeOwner() internal pure override returns (bool) {
+        return true;
     }
 
     /// @notice Authorizes the upgrade of the implementation contract

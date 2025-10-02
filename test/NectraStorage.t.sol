@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {Test} from "forge-std/Test.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 import {NectraBaseTest} from "test/NectraBase.t.sol";
 import {Nectra, NectraBase} from "src/Nectra.sol";
@@ -97,7 +96,7 @@ contract NectraStorageTest is NectraBaseTest {
         (uint256 tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
 
         // Upgrade to a fresh implementation of Nectra (no init data)
-        UnsafeUpgrades.upgradeProxy(address(nectra), address(new Nectra()), "");
+        nectra.upgradeToAndCall(address(new Nectra()), "");
 
         // Config should remain identical
         NectraBase.SystemParams memory afterCfg = nectra.getConfig();

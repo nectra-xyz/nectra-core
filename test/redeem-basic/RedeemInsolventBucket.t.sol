@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 import {NectraRedeem} from "src/NectraRedeem.sol";
 import {NectraBase} from "src/NectraBase.sol";

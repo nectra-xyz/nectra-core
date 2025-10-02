@@ -2,8 +2,9 @@
 pragma solidity ^0.8.23;
 
 import {NectraLib} from "src/NectraLib.sol";
-import {SafeCastLib} from "src/lib/SafeCastLib.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
+
+import {SafeCastLib} from "src/lib/SafeCastLib.sol";
 import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 

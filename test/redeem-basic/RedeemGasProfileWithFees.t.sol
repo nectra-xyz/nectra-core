@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
@@ -39,13 +39,13 @@ contract RedeemGasProfileWithFeesTest is NectraBaseTest {
             uint256 gasUsed = gasleft();
             nectra.redeem(1 ether * i, 0 ether);
             uint256 gasUsedRedeem = gasUsed - gasleft();
-            console2.log(i, gasUsedRedeem);
+            console.log(i, gasUsedRedeem);
             vm.revertToState(snapshot);
         }
 
         uint256 gasUsed = gasleft();
         nectra.redeem(1 ether, 0 ether);
         uint256 gasUsedRedeem = gasUsed - gasleft();
-        console2.log("Redeem 1 ether", gasUsedRedeem);
+        console.log("Redeem 1 ether", gasUsedRedeem);
     }
 }

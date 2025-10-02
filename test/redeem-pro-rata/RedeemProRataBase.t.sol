@@ -5,7 +5,6 @@ import {NectraBaseTest} from "test/NectraBase.t.sol";
 import {NectraLib} from "src/NectraLib.sol";
 
 import {console} from "forge-std/console.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract RedeemProRataBaseTest is NectraBaseTest {
     uint256 internal bufferTokenId;
@@ -125,7 +124,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
                 _debt(tokenIds[i]),
                 expectedDebts[i],
                 1e11,
-                string.concat("debt mismatch for token ", Strings.toString(i))
+                string.concat("debt mismatch for token ", _toString(i))
             );
         }
     }
@@ -136,7 +135,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
                 _collateral(tokenIds[i]),
                 expectedCollaterals[i],
                 1e11,
-                string.concat("collateral mismatch for token ", Strings.toString(i))
+                string.concat("collateral mismatch for token ", _toString(i))
             );
         }
     }
@@ -157,6 +156,20 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         for (uint256 i = 0; i < tokens.length; i++) {
             _checkCanWithDrawCollateral(tokens[i]);
         }
+    }
+
+    function _toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) return "0";
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) { digits++; temp /= 10; }
+        bytes memory buf = new bytes(digits);
+        while (value != 0) {
+            digits--;
+            buf[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buf);
     }
 
     function _getExpectedFeePercentage(uint256 redemptionAmount) internal virtual returns (uint256) {}

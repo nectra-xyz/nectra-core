@@ -1,7 +1,7 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib", "dependencies"]
+libs = ["lib"]
 via_ir = true
 optimizer = true
 # Extra config recommended by OpenZeppelin -- https://docs.openzeppelin.com/upgrades-plugins/foundry-upgrades#before_running
@@ -16,12 +16,3 @@ max_test_rejects = 4194304
 
 [invariant]
 shrink_run_limit = 0
-
-[soldeer]
-version = "1"   # tells Forge to use the new dependency resolver
-
-[dependencies]
-forge-std = "1.10.0"
-openzeppelin-foundry-upgrades = { version = "0.4.0", git = "https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades.git", rev = "cfd861bc18ef4737e82eae6ec75304e27af699ef" }
-openzeppelin-contracts-upgradeable = { version = "5.4.0", git = "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git", rev = "b6405466212077af96443edce95d3368d6ffb005" }
-openzeppelin-contracts = { version = "5.4.0", git = "https://github.com/OpenZeppelin/openzeppelin-contracts.git", rev = "0fc8e4b5e2e4a6c31e17f1821ccc4bf76c4e22cd" }

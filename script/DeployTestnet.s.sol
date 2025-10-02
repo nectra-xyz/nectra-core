@@ -6,11 +6,10 @@ import {NectraNFT} from "src/NectraNFT.sol";
 import {Nectra} from "src/Nectra.sol";
 import {NectraLib} from "src/NectraLib.sol";
 import {NectraBase} from "src/NectraBase.sol";
-import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
-import {InitialImplementation} from "src/initialImplementation.sol";
-import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
+
+import {ERC1967Proxy} from "src/lib/ERC1967Proxy.sol";
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -21,36 +20,50 @@ contract DeployTestnet is Script {
     uint256 private _primaryStalenessPeriod = 24 hours;
     uint256 private _secondaryStalenessPeriod = 24 hours;
 
-    address private savingsAccount = 0x76450AC480C71dcc30C467379427614f9D894f93;
+    address private savingsAccount = 0x39774D75851FAD404b3d35b4cC8724171Cf86879;
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("TESTNET_PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("NECTRA_DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer:     ", deployer);
         console.log("Deployer bal: ", deployer.balance);
 
         vm.startBroadcast(deployerPrivateKey);
-        OracleAggregator oracleAggregator =
-            new OracleAggregator(_primaryFeed, _secondaryFeed, _primaryStalenessPeriod, _secondaryStalenessPeriod);
+        // OracleAggregator oracleAggregator =
+        //     new OracleAggregator(_primaryFeed, _secondaryFeed, _primaryStalenessPeriod, _secondaryStalenessPeriod);
+        OracleAggregator oracleAggregator = OracleAggregator(0x4c9aC40e2ee46eDD1626EF835F926D5a68182056);
 
         // deploy nectra with the initial implementation to get an address for core
-        address nectraProxy = Upgrades.deployUUPSProxy(
-            "InitialImplementation.sol",
+        Nectra nectraImplementation = new Nectra();
+        ERC1967Proxy nectraProxy = new ERC1967Proxy(
+            address(nectraImplementation),
             bytes("") // no initializer data
         );
-        Nectra nectra = Nectra(nectraProxy);
+        Nectra nectra = Nectra(address(nectraProxy));
 
-        // deploy nft with the initial implementation to get an address for core
-        address nftProxy = Upgrades.deployUUPSProxy(
-            "NectraNFT.sol", abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+        // deploy nft
+        NectraNFT nectraNFTImplementation = new NectraNFT();
+        ERC1967Proxy nftProxy = new ERC1967Proxy(
+            address(nectraNFTImplementation),
+            abi.encodeWithSelector(
+                NectraNFT.initialize.selector, 
+                deployer,       // owner
+                address(nectra) // minter
+            )
         );
-        NectraNFT nectraNFT = NectraNFT(nftProxy);
+        NectraNFT nectraNFT = NectraNFT(address(nftProxy));
 
         // deploy nUSD
-        address nusdProxy = Upgrades.deployUUPSProxy(
-            "NUSDToken.sol", abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+        NUSDToken nectraUSDImplementation = new NUSDToken();
+        ERC1967Proxy nusdProxy = new ERC1967Proxy(
+            address(nectraUSDImplementation),
+            abi.encodeWithSelector(
+                NUSDToken.initialize.selector, 
+                deployer,       // owner
+                address(nectra) // minter
+            )
         );
-        NUSDToken nectraUSD = NUSDToken(nusdProxy);
+        NUSDToken nectraUSD = NUSDToken(address(nusdProxy));
 
         NectraBase.SystemParams memory params = NectraBase.SystemParams({
             nectraNFTAddress: address(nectraNFT),
@@ -78,9 +91,7 @@ contract DeployTestnet is Script {
             flashMintFee: 0.0025 ether, // 0.25%
             flashBorrowFee: 0.0025 ether // 0.25%
         });
-
-        Options memory opts;
-        Upgrades.upgradeProxy(nectraProxy, "Nectra.sol", abi.encodeCall(Nectra.initialize, (params)), opts);
+        nectra.initialize(params);
 
         NectraExternal nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {SatsumaHandler} from "src/auxiliary/SatsumaHandler.sol";
-import {NUSDToken} from "src/NUSDToken.sol";
-import {SatsumaMock} from "test/mocks/SatsumaMock.sol";
-import {WCBTCMock} from "test/mocks/WCBTCMock.sol";
-import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
+import {Test, console} from "forge-std/Test.sol";
 
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {NUSDToken} from "src/NUSDToken.sol";
+import {SatsumaHandler} from "src/auxiliary/SatsumaHandler.sol";
+
+import {ERC1967Proxy} from "src/lib/ERC1967Proxy.sol";
+
+import {WCBTCMock} from "test/mocks/WCBTCMock.sol";
+import {SatsumaMock} from "test/mocks/SatsumaMock.sol";
+import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
 
 contract SatsumaHandlerTest is Test {
     uint256 constant UNIT = 1 ether;
@@ -30,10 +31,16 @@ contract SatsumaHandlerTest is Test {
         oracle = new OracleAggregatorMock(BTC_PRICE);
 
         // Deploy tokens
-        address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NUSDToken()), abi.encodeCall(NUSDToken.initialize, (address(this), nectra))
+        NUSDToken nectraUSDImplementation = new NUSDToken();
+        ERC1967Proxy nusdProxy = new ERC1967Proxy(
+            address(nectraUSDImplementation),
+            abi.encodeWithSelector(
+                NUSDToken.initialize.selector, 
+                address(this),  // owner
+                address(nectra) // minter
+            )
         );
-        nusd = NUSDToken(nusdProxy);
+        nusd = NUSDToken(address(nusdProxy));
 
         wcbtc = new WCBTCMock();
 

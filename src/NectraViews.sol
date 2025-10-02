@@ -2,9 +2,9 @@
 pragma solidity ^0.8.23;
 
 import {NectraLib} from "src/NectraLib.sol";
+import {NectraBase} from "src/NectraBase.sol";
 import {NectraMathLib} from "src/NectraMathLib.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
-import {NectraBase} from "src/NectraBase.sol";
 import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
 
 /// @title NectraViews

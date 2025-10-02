@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
-import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
+
+import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
+
 import {IFlashLoanSimpleReceiver} from "src/interfaces/IFlashLoanSimpleReceiver.sol";
 
 /// @title NectraFlash

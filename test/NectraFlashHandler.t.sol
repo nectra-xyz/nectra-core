@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 import {NectraFlashHandler} from "src/auxiliary/NectraFlashHandler.sol";
 import {SatsumaHandler} from "src/auxiliary/SatsumaHandler.sol";
 import {SatsumaMock} from "test/mocks/SatsumaMock.sol";

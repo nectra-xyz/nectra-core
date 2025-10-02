@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 import {SafeCastLib} from "src/lib/SafeCastLib.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
 /// @title NectraMathLib
 /// @notice Core mathematical operations for the Nectra protocol

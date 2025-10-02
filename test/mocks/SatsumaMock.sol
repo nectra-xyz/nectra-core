@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {Test} from "forge-std/Test.sol";
-import {ISwapRouter} from "src/interfaces/Satsuma/ISwapRouter.sol";
-import {IQuoterV2} from "src/interfaces/Satsuma/IQuoterV2.sol";
-import {IWCBTC} from "src/interfaces/IWCBTC.sol";
+import {Test, console} from "forge-std/Test.sol";
+
 import {NUSDToken} from "src/NUSDToken.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {console} from "forge-std/console.sol";
+import {IERC20} from "src/interfaces/IERC20.sol";
+import {IWCBTC} from "src/interfaces/IWCBTC.sol";
+import {IQuoterV2} from "src/interfaces/Satsuma/IQuoterV2.sol";
+import {ISwapRouter} from "src/interfaces/Satsuma/ISwapRouter.sol";
 
 contract SatsumaMock is Test, ISwapRouter, IQuoterV2 {
     uint256 public constant UNIT = 1 ether;

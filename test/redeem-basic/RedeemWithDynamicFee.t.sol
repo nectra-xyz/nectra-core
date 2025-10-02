@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {RedeemBaseTest, console2} from "test/redeem-basic/RedeemBase.t.sol";
+import {RedeemBaseTest, console} from "test/redeem-basic/RedeemBase.t.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";

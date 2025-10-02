@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 contract NectraOpenFeeTest is NectraBaseTest {
     function setUp() public virtual override {

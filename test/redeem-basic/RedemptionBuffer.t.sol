@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {INectra} from "src/interfaces/INectra.sol";
 import {NectraLib} from "src/NectraLib.sol";
+
+import {Ownable} from "src/lib/Ownable.sol";
+
+import {INectra} from "src/interfaces/INectra.sol";
 
 contract RedemptionBufferTest is NectraBaseTest {
     address internal dao;
@@ -38,7 +40,7 @@ contract RedemptionBufferTest is NectraBaseTest {
         // non-dao cannot create buffer
         vm.deal(notDao, 10 ether);
         vm.prank(notDao);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notDao));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector, notDao));
         nectra.createRedemptionBufferPosition{value: 10 ether}(10 ether, 1 ether, manager);
 
         // dao succeeds

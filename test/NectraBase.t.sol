@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
+import {NectraLib} from "src/NectraLib.sol";
 import {Nectra, NectraBase} from "src/Nectra.sol";
 import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
-import {NectraLib} from "src/NectraLib.sol";
-import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
-import {InitialImplementation} from "src/initialImplementation.sol";
 
-// use UnsafeUpgrades to deploy and upgrade the contracts during testing only
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {ERC1967Proxy} from "src/lib/ERC1967Proxy.sol";
+
+import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
 
 abstract contract NectraBaseTest is Test {
     uint256 constant UNIT = 1 ether;
@@ -57,20 +56,36 @@ abstract contract NectraBaseTest is Test {
         oracle = new OracleAggregatorMock(1.2 ether);
 
         // deploy nectra with the initial implementation to get an address for core
-        address nectraProxy = UnsafeUpgrades.deployUUPSProxy(address(new InitialImplementation()), "");
-        nectra = Nectra(nectraProxy);
-
-        // deploy nft with the initial implementation to get an address for core
-        address nftProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NectraNFT()), abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+        Nectra nectraImplementation = new Nectra();
+        ERC1967Proxy nectraProxy = new ERC1967Proxy(
+            address(nectraImplementation),
+            bytes("") // no initializer data
         );
-        nectraNFT = NectraNFT(nftProxy);
+        nectra = Nectra(address(nectraProxy));
+
+        // deploy nft
+        NectraNFT nectraNFTImplementation = new NectraNFT();
+        ERC1967Proxy nftProxy = new ERC1967Proxy(
+            address(nectraNFTImplementation),
+            abi.encodeWithSelector(
+                NectraNFT.initialize.selector, 
+                address(this),  // owner
+                address(nectra) // minter
+            )
+        );
+        nectraNFT = NectraNFT(address(nftProxy));
 
         // deploy nUSD
-        address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NUSDToken()), abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+        NUSDToken nectraUSDImplementation = new NUSDToken();
+        ERC1967Proxy nusdProxy = new ERC1967Proxy(
+            address(nectraUSDImplementation),
+            abi.encodeWithSelector(
+                NUSDToken.initialize.selector, 
+                address(this),  // owner
+                address(nectra) // minter
+            )
         );
-        nectraUSD = NUSDToken(nusdProxy);
+        nectraUSD = NUSDToken(address(nusdProxy));
 
         // upgrade nectra to the final implementation
         Nectra.SystemParams memory _params = systemParams;
@@ -78,7 +93,7 @@ abstract contract NectraBaseTest is Test {
         _params.nusdTokenAddress = address(nectraUSD);
         _params.oracleAddress = address(oracle);
 
-        UnsafeUpgrades.upgradeProxy(nectraProxy, address(new Nectra()), abi.encodeCall(Nectra.initialize, (_params)));
+        nectra.initialize(_params);
 
         nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 

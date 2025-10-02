@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {Test} from "forge-std/Test.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Test, console} from "forge-std/Test.sol";
 
-import {Nectra, NectraBase} from "src/Nectra.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
+import {Nectra, NectraBase} from "src/Nectra.sol";
 import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
-import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
-import {SatsumaMock} from "test/mocks/SatsumaMock.sol";
-import {WCBTCMock} from "test/mocks/WCBTCMock.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ISwapRouter} from "src/interfaces/Satsuma/ISwapRouter.sol";
-import {IQuoterV2} from "src/interfaces/Satsuma/IQuoterV2.sol";
-import {MintableErc20} from "test/helpers/MintableErc20.sol";
 
-import {console} from "forge-std/console.sol";
+import {ERC1967Proxy} from "src/lib/ERC1967Proxy.sol";
+
+import {IERC20} from "src/interfaces/IERC20.sol";
+import {IQuoterV2} from "src/interfaces/Satsuma/IQuoterV2.sol";
+import {ISwapRouter} from "src/interfaces/Satsuma/ISwapRouter.sol";
+
+import {WCBTCMock} from "test/mocks/WCBTCMock.sol";
+import {SatsumaMock} from "test/mocks/SatsumaMock.sol";
+import {MintableErc20} from "test/helpers/MintableErc20.sol";
+import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
 
 contract RedemptionBufferSimulation is Test {
     uint256 constant UNIT = 1 ether;
@@ -51,21 +52,39 @@ contract RedemptionBufferSimulation is Test {
         // oracle at 100,000 per BTC
         oracle = new OracleAggregatorMock(100_000 * UNIT);
 
-        // deploy core via proxies
-        address nectraProxy = UnsafeUpgrades.deployUUPSProxy(address(new Nectra()), "");
-        nectra = Nectra(nectraProxy);
-
-        address nftProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NectraNFT()), abi.encodeCall(NectraNFT.initialize, (address(this), address(nectra)))
+        // deploy nectra with the initial implementation to get an address for core
+        Nectra nectraImplementation = new Nectra();
+        ERC1967Proxy nectraProxy = new ERC1967Proxy(
+            address(nectraImplementation),
+            bytes("") // no initializer data
         );
-        nft = NectraNFT(nftProxy);
+        nectra = Nectra(address(nectraProxy));
 
-        address nusdProxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NUSDToken()), abi.encodeCall(NUSDToken.initialize, (address(this), address(nectra)))
+        // deploy nft
+        NectraNFT nectraNFTImplementation = new NectraNFT();
+        ERC1967Proxy nftProxy = new ERC1967Proxy(
+            address(nectraNFTImplementation),
+            abi.encodeWithSelector(
+                NectraNFT.initialize.selector, 
+                address(this),  // owner
+                address(nectra) // minter
+            )
         );
-        nusd = NUSDToken(nusdProxy);
+        nft = NectraNFT(address(nftProxy));
 
-        // initialize Nectra with requested params
+        // deploy nUSD
+        NUSDToken nectraUSDImplementation = new NUSDToken();
+        ERC1967Proxy nusdProxy = new ERC1967Proxy(
+            address(nectraUSDImplementation),
+            abi.encodeWithSelector(
+                NUSDToken.initialize.selector, 
+                address(this),  // owner
+                address(nectra) // minter
+            )
+        );
+        nusd = NUSDToken(address(nusdProxy));
+
+        // upgrade nectra to the final implementation and initialize with requested params
         NectraBase.SystemParams memory p = NectraBase.SystemParams({
             nectraNFTAddress: address(nft),
             nusdTokenAddress: address(nusd),

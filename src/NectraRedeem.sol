@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
-import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
-import {SafeCastLib} from "src/lib/SafeCastLib.sol";
 import {NectraLib} from "src/NectraLib.sol";
-import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraBase} from "src/NectraBase.sol";
-import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
+import {NectraMathLib} from "src/NectraMathLib.sol";
 import {NectraCoreStorage} from "src/storage/NectraCoreStorage.sol";
+import {NectraConfigStorage} from "src/storage/NectraConfigStorage.sol";
+
+import {SafeCastLib} from "src/lib/SafeCastLib.sol";
+import {SafeTransferLib} from "src/lib/SafeTransferLib.sol";
+import {FixedPointMathLib} from "src/lib/FixedPointMathLib.sol";
 
 /// @title NectraRedeem
 /// @notice Handles the redemption of NUSD tokens for collateral

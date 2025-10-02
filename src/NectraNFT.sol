@@ -2,14 +2,14 @@
 pragma solidity ^0.8.23;
 
 import {ERC721} from "src/lib/ERC721.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Ownable} from "src/lib/Ownable.sol";
+import {Initializable} from "src/lib/Initializable.sol";
+import {UUPSUpgradeable} from "src/lib/UUPSUpgradeable.sol";
 
 /// @title NectraNFT
 /// @notice ERC721 token representing positions in the Nectra protocol
 /// @dev Extends ERC721 with permission system and enumerable balance tracking
-contract NectraNFT is ERC721, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract NectraNFT is ERC721, Initializable, Ownable, UUPSUpgradeable {
     enum Permission {
         Borrow,
         Withdraw,
@@ -36,14 +36,16 @@ contract NectraNFT is ERC721, Initializable, OwnableUpgradeable, UUPSUpgradeable
     mapping(uint256 tokenId => uint256) private _ownedTokensIndex;
     mapping(uint256 tokenId => uint256) private _allTokensIndex;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the token
     /// @param owner Address of the owner of the token
     /// @param nectraAddress Address of the main Nectra contract
     function initialize(address owner, address nectraAddress) public initializer {
-        NECTRA_ADDRESS = nectraAddress;
-
-        __Ownable_init(owner);
-        __UUPSUpgradeable_init();
+        _initializeOwner(owner);
+        NECTRA_ADDRESS = nectraAddress; 
     }
 
     /// @notice Returns the name of the token
@@ -271,6 +273,12 @@ contract NectraNFT is ERC721, Initializable, OwnableUpgradeable, UUPSUpgradeable
             tokenIds[i] = _ownedTokens[owner][i];
         }
         return tokenIds;
+    }
+
+    /// @notice Prevent double initialization of the owner.
+    /// @dev do not remove this function during future upgrades
+    function _guardInitializeOwner() internal pure override returns (bool) {
+        return true;
     }
 
     /// @notice Authorizes the upgrade of the implementation contract
