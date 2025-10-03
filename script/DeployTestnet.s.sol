@@ -46,8 +46,8 @@ contract DeployTestnet is Script {
         ERC1967Proxy nftProxy = new ERC1967Proxy(
             address(nectraNFTImplementation),
             abi.encodeWithSelector(
-                NectraNFT.initialize.selector, 
-                deployer,       // owner
+                NectraNFT.initialize.selector,
+                deployer, // owner
                 address(nectra) // minter
             )
         );
@@ -58,8 +58,8 @@ contract DeployTestnet is Script {
         ERC1967Proxy nusdProxy = new ERC1967Proxy(
             address(nectraUSDImplementation),
             abi.encodeWithSelector(
-                NUSDToken.initialize.selector, 
-                deployer,       // owner
+                NUSDToken.initialize.selector,
+                deployer, // owner
                 address(nectra) // minter
             )
         );

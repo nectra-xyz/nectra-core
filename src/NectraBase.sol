@@ -470,15 +470,11 @@ contract NectraBase {
     }
 
     /// @notice Stores the redemption buffer position id
-    /// @param redemptionBufferPositionId The redemption buffer position id to store
-    function _storeRedemptionBufferPositionId(uint256 redemptionBufferPositionId) internal {
-        _core().redemptionBufferPositionId = redemptionBufferPositionId;
-    }
-
-    /// @notice Stores the redemption buffer position manager
-    /// @param redemptionBufferPositionManager The redemption buffer position manager to store
-    function _storeRedemptionBufferPositionManager(address redemptionBufferPositionManager) internal {
-        _core().redemptionBufferPositionManager = redemptionBufferPositionManager;
+    /// @param positionId The redemption buffer position id to store
+    /// @param manager The redemption buffer position manager to store
+    function _storeRedemptionBufferPosition(uint256 positionId, address manager) internal {
+        _core().redemptionBufferPositionId = positionId;
+        _core().redemptionBufferPositionManager = manager;
     }
 
     /// @notice Gets the collateral price with circuit breaker check

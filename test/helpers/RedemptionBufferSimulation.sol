@@ -65,8 +65,8 @@ contract RedemptionBufferSimulation is Test {
         ERC1967Proxy nftProxy = new ERC1967Proxy(
             address(nectraNFTImplementation),
             abi.encodeWithSelector(
-                NectraNFT.initialize.selector, 
-                address(this),  // owner
+                NectraNFT.initialize.selector,
+                address(this), // owner
                 address(nectra) // minter
             )
         );
@@ -77,8 +77,8 @@ contract RedemptionBufferSimulation is Test {
         ERC1967Proxy nusdProxy = new ERC1967Proxy(
             address(nectraUSDImplementation),
             abi.encodeWithSelector(
-                NUSDToken.initialize.selector, 
-                address(this),  // owner
+                NUSDToken.initialize.selector,
+                address(this), // owner
                 address(nectra) // minter
             )
         );

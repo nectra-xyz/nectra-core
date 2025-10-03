@@ -68,8 +68,8 @@ abstract contract NectraBaseTest is Test {
         ERC1967Proxy nftProxy = new ERC1967Proxy(
             address(nectraNFTImplementation),
             abi.encodeWithSelector(
-                NectraNFT.initialize.selector, 
-                address(this),  // owner
+                NectraNFT.initialize.selector,
+                address(this), // owner
                 address(nectra) // minter
             )
         );
@@ -80,8 +80,8 @@ abstract contract NectraBaseTest is Test {
         ERC1967Proxy nusdProxy = new ERC1967Proxy(
             address(nectraUSDImplementation),
             abi.encodeWithSelector(
-                NUSDToken.initialize.selector, 
-                address(this),  // owner
+                NUSDToken.initialize.selector,
+                address(this), // owner
                 address(nectra) // minter
             )
         );
@@ -114,6 +114,18 @@ abstract contract NectraBaseTest is Test {
 
         // restore system interest rate
         nectra.storeSystemInterestRate(currentInterestRate);
+    }
+
+    function _createBuffer(uint256 collateral, uint256 debt, address bufferManager)
+        internal
+        returns (uint256 tokenId)
+    {
+        nectra.storeRedemptionBuffer(0, bufferManager);
+
+        vm.deal(bufferManager, bufferManager.balance + collateral);
+
+        vm.prank(bufferManager);
+        (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
     }
 
     function _checkPosition(

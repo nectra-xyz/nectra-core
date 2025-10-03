@@ -84,6 +84,8 @@ contract NUSDToken is ERC20, Initializable, Ownable, UUPSUpgradeable {
 
     /// @notice Authorizes the upgrade of the implementation contract
     /// @dev Only the owner can upgrade the implementation contract
-    /// @param newImplementation The address of the new implementation contract
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    /// @dev newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _checkOwner();
+    }
 }

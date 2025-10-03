@@ -35,8 +35,8 @@ contract SatsumaHandlerTest is Test {
         ERC1967Proxy nusdProxy = new ERC1967Proxy(
             address(nectraUSDImplementation),
             abi.encodeWithSelector(
-                NUSDToken.initialize.selector, 
-                address(this),  // owner
+                NUSDToken.initialize.selector,
+                address(this), // owner
                 address(nectra) // minter
             )
         );

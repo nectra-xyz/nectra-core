@@ -21,31 +21,16 @@ contract RedemptionBufferTest is NectraBaseTest {
         notDao = makeAddr("notDao");
     }
 
-    function _createPosition(address who, uint256 collateral, uint256 debt) internal returns (uint256 tokenId) {
-        vm.deal(who, collateral);
-        vm.prank(who);
-        (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
-    }
-
-    function _createBuffer(uint256 collateral, uint256 debt, address bufferManager)
-        internal
-        returns (uint256 tokenId)
-    {
-        vm.deal(address(this), address(this).balance + collateral);
-        (tokenId,,,,) = nectra.createRedemptionBufferPosition{value: collateral}(collateral, debt, bufferManager);
-    }
-
     // 1. confirm only dao can create buffer position, should fail otherwise
     function test_onlyDaoCanSetBuffer() public {
         // non-dao cannot create buffer
         vm.deal(notDao, 10 ether);
         vm.prank(notDao);
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector, notDao));
-        nectra.createRedemptionBufferPosition{value: 10 ether}(10 ether, 1 ether, manager);
+        nectra.storeRedemptionBuffer(0, manager);
 
         // dao succeeds
-        uint256 tokenId;
-        (tokenId,,,,) = nectra.createRedemptionBufferPosition{value: 10 ether}(10 ether, 1 ether, manager);
+        uint256 tokenId = _createBuffer(10 ether, 1 ether, manager);
         _checkPosition(tokenId, 10 ether, 1 ether, 0);
     }
 
@@ -90,8 +75,8 @@ contract RedemptionBufferTest is NectraBaseTest {
         uint256 bufferTokenId = _createBuffer(10 ether, 5 ether, manager);
         _checkPosition(bufferTokenId, 10 ether, 5 ether, 0);
 
-        uint256 userTokenId = _createPosition(user, 10 ether, 5 ether);
         uint256 userRate = nectra.getSystemInterestRate();
+        uint256 userTokenId = _createPosition(user, 10 ether, 5 ether, userRate);
         _checkPosition(userTokenId, 10 ether, 5 ether, userRate);
 
         // Record pre redemption debts
@@ -117,7 +102,7 @@ contract RedemptionBufferTest is NectraBaseTest {
         uint256 tokenId = _createBuffer(10 ether, 1 ether, manager);
 
         address newManager = makeAddr("newManager");
-        nectra.storeRedemptionBufferPositionManager(newManager);
+        nectra.storeRedemptionBuffer(tokenId, newManager);
 
         // old manager cannot manage anymore
         vm.prank(manager);
@@ -132,9 +117,11 @@ contract RedemptionBufferTest is NectraBaseTest {
 
     // 6. if buffer position id is changed, new buffer gets 0% on next modify; old buffer uses system IR on next modify
     function test_changingBufferIdUpdatesWhichPositionIs0Percent() public {
+        uint256 systemIR = nectra.getSystemInterestRate();
+
         // Create two positions
         uint256 a = _createBuffer(10 ether, 1 ether, manager);
-        uint256 b = _createPosition(address(this), 10 ether, 1 ether);
+        uint256 b = _createPosition(address(this), 10 ether, 1 ether, systemIR);
 
         // Modify A as manager -> stays at 0%
         vm.prank(manager);
@@ -142,7 +129,7 @@ contract RedemptionBufferTest is NectraBaseTest {
         _checkPosition(a, 10 ether, 2 ether, 0);
 
         // Change buffer id to B
-        nectra.storeRedemptionBufferPositionId(b);
+        nectra.storeRedemptionBuffer(b, manager);
 
         // Modify B as manager -> 0%
         vm.prank(manager);
@@ -150,7 +137,7 @@ contract RedemptionBufferTest is NectraBaseTest {
         _checkPosition(b, 10 ether, 3 ether, 0);
 
         // Modify A now (not buffer) -> should use system IR (non-zero)
-        uint256 systemIR = nectra.getSystemInterestRate();
+        systemIR = nectra.getSystemInterestRate();
         // manager still owns the NFT for this position but it will no longer
         // be in the 0% bucket
         vm.prank(manager);

@@ -2,8 +2,16 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-via_ir = true
+
+# Optimizer
 optimizer = true
+optimizer_runs = 50          # <— smaller code; try 1, 20, 50, 100
+via_ir = true                # usually helps size; flip to false if size grows
+
+# Misc
+bytecode_hash = "none"       # strips metadata hash from creation bytecode
+cbor_metadata = false        # strips CBOR metadata from creation bytecode
+
 # Extra config recommended by OpenZeppelin -- https://docs.openzeppelin.com/upgrades-plugins/foundry-upgrades#before_running
 ffi = true
 ast = true

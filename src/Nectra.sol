@@ -45,6 +45,7 @@ contract Nectra is
     error RedemptionBufferPositionAlreadyExists(uint256 bufferId);
     error RedemptionBufferPositionManagerAlreadySet(address bufferManager);
     error InvalidManager(address manager);
+    error PermitFailed();
 
     /// @notice Emitted when a position is modified
     /// @param tokenId ID of the position being modified
@@ -70,13 +71,10 @@ contract Nectra is
     /// @param interestRate The system set interest rate
     event SystemInterestRateSet(uint256 interestRate);
 
-    /// @notice Emitted when the redemption buffer position id is set
-    /// @param redemptionBufferPositionId The redemption buffer position id
-    event RedemptionBufferPositionIdSet(uint256 redemptionBufferPositionId);
-
-    /// @notice Emitted when the redemption buffer position manager is set
-    /// @param redemptionBufferPositionManager The redemption buffer position manager
-    event RedemptionBufferPositionManagerSet(address redemptionBufferPositionManager);
+    /// @notice Emitted when the redemption buffer position is set
+    /// @param positionId The redemption buffer position id
+    /// @param manager The redemption buffer position manager
+    event RedemptionBufferPositionSet(uint256 positionId, address manager);
 
     constructor() {
         _disableInitializers();
@@ -141,10 +139,19 @@ contract Nectra is
                 );
             }
         } else {
+            uint256 newTokenId = NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).mint(msg.sender);
+
+            if (msg.sender == _redemptionBufferPositionManager()) {
+                uint256 existingBufferId = _redemptionBufferPositionId();
+                require(existingBufferId == 0, RedemptionBufferPositionAlreadyExists(existingBufferId));
+                _storeRedemptionBufferPosition(newTokenId, msg.sender);
+                interestRate = 0;
+            }
+
             // load bucket using system interest rate
             (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
             position = NectraLib.PositionState({
-                tokenId: NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).mint(msg.sender),
+                tokenId: newTokenId,
                 collateral: 0,
                 debtShares: 0,
                 lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
@@ -180,7 +187,9 @@ contract Nectra is
         } else if (borrowOrRepay < 0) {
             if (permit.length > 0) {
                 // solhint-disable-next-line avoid-low-level-calls
-                _systemConfig().NUSD_TOKEN_ADDRESS.call(abi.encodePacked(NUSDToken.permit.selector, permit));
+                (bool success,) =
+                    _systemConfig().NUSD_TOKEN_ADDRESS.call(abi.encodePacked(NUSDToken.permit.selector, permit));
+                require(success, PermitFailed());
             }
             // burn NUSD
             NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).burn(msg.sender, uint256(-borrowOrRepay));
@@ -203,78 +212,6 @@ contract Nectra is
         );
 
         return (position.tokenId, depositOrWithdraw, borrowOrRepay, position.collateral, effectiveDebt);
-    }
-
-    /// @notice Creates the redemption buffer position
-    /// @dev Only callable by the DAO
-    /// @param collateral Amount of collateral to deposit
-    /// @param debt Amount of nUSD to borrow
-    /// @param manager The manager of the buffer position
-    /// @return tokenId The ID of the position being modified
-    /// @return depositOrWithdraw Actual amount of collateral deposited or withdrawn
-    /// @return borrowOrRepay Actual amount of nUSD borrowed or repaid
-    /// @return collateral The total collateral in the position after modification
-    /// @return effectiveDebt The total effective debt of the position after modification
-    function createRedemptionBufferPosition(uint256 collateral, uint256 debt, address manager)
-        external
-        payable
-        onlyOwner
-        returns (uint256, int256, int256, uint256, uint256)
-    {
-        uint256 existingBufferId = _redemptionBufferPositionId();
-        address existingBufferManager = _redemptionBufferPositionManager();
-        // prevent this function from being used to manage the position
-        require(existingBufferId == 0, RedemptionBufferPositionAlreadyExists(existingBufferId));
-        require(existingBufferManager == address(0), RedemptionBufferPositionManagerAlreadySet(existingBufferManager));
-        require(manager != address(0), InvalidManager(manager));
-        require(collateral == msg.value, CollateralMismatch());
-
-        NectraLib.GlobalState memory global;
-        NectraLib.BucketState memory bucket;
-        NectraLib.PositionState memory position;
-        NectraLib.BucketState memory oldBucket;
-
-        // buffer position has no interest rate
-        uint256 interestRate = 0;
-        uint256 tokenId = NectraNFT(_systemConfig().NECTRA_NFT_ADDRESS).mint(manager);
-
-        // set buffer position id and manager
-        _storeRedemptionBufferPositionId(tokenId);
-        _storeRedemptionBufferPositionManager(manager);
-
-        // create new position
-        (bucket, global) = _loadAndUpdateBucketAndGlobalState(interestRate, _core()._epochs[interestRate]);
-        position = NectraLib.PositionState({
-            tokenId: tokenId,
-            collateral: 0,
-            debtShares: 0,
-            lastBucketAccumulatedLiquidatedCollateralPerShare: bucket.accumulatedLiquidatedCollateralPerShare,
-            lastBucketAccumulatedRedeemedCollateralPerShare: bucket.accumulatedRedeemedCollateralPerShare,
-            interestRate: interestRate,
-            bucketEpoch: bucket.epoch
-        });
-
-        // if bucket is new, increment the num active buckets
-        if (bucket.globalDebtShares == 0 && debt > 0) {
-            _storeNumActiveBuckets(_numActiveBuckets() + 1);
-        }
-
-        (int256 deposit, int256 borrow,, uint256 effectiveDebt, uint256 fee) =
-            _modifyPosition(position, bucket, oldBucket, global, int256(collateral), int256(debt), interestRate);
-
-        if (oldBucket.lastUpdateTime != 0) {
-            _finalizeBucket(oldBucket);
-        }
-
-        _finalize(position, bucket, global);
-
-        if (borrow > 0) {
-            NUSDToken(_systemConfig().NUSD_TOKEN_ADDRESS).mint(manager, uint256(borrow));
-        }
-
-        emit ModifyPosition(tokenId, deposit, borrow, position.collateral, effectiveDebt, interestRate, msg.sender, fee);
-
-        return (tokenId, deposit, borrow, position.collateral, effectiveDebt);
     }
 
     /// @notice Simulates a position modification to preview the outcome
@@ -465,7 +402,8 @@ contract Nectra is
     /// @notice Stores the system set interest rate
     /// @dev Only callable by the DAO
     /// @param interestRate The system set interest rate to set
-    function storeSystemInterestRate(uint256 interestRate) external onlyOwner {
+    function storeSystemInterestRate(uint256 interestRate) external {
+        _checkOwner();
         _storeSystemInterestRate(interestRate);
 
         emit SystemInterestRateSet(interestRate);
@@ -485,20 +423,13 @@ contract Nectra is
 
     /// @notice Stores the redemption buffer position id
     /// @dev Only callable by the DAO
-    /// @param redemptionBufferPositionId The redemption buffer position id to store
-    function storeRedemptionBufferPositionId(uint256 redemptionBufferPositionId) external onlyOwner {
-        _storeRedemptionBufferPositionId(redemptionBufferPositionId);
+    /// @param positionId The redemption buffer position id to store
+    /// @param manager The redemption buffer position manager to store
+    function storeRedemptionBuffer(uint256 positionId, address manager) external {
+        _checkOwner();
+        _storeRedemptionBufferPosition(positionId, manager);
 
-        emit RedemptionBufferPositionIdSet(redemptionBufferPositionId);
-    }
-
-    /// @notice Stores the redemption buffer position manager
-    /// @dev Only callable by the DAO
-    /// @param redemptionBufferPositionManager The redemption buffer position manager to store
-    function storeRedemptionBufferPositionManager(address redemptionBufferPositionManager) external onlyOwner {
-        _storeRedemptionBufferPositionManager(redemptionBufferPositionManager);
-
-        emit RedemptionBufferPositionManagerSet(redemptionBufferPositionManager);
+        emit RedemptionBufferPositionSet(positionId, manager);
     }
 
     /// @notice Prevent double initialization of the owner.
@@ -509,6 +440,8 @@ contract Nectra is
 
     /// @notice Authorizes the upgrade of the implementation contract
     /// @dev Required by UUPSUpgradeable to authorize upgrades
-    /// @param newImplementation The address of the new implementation contract
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    /// @dev newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _checkOwner();
+    }
 }

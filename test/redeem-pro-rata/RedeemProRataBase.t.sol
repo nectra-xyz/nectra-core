@@ -80,9 +80,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         redemptionBufferDebt = 100 ether;
         vm.deal(address(this), redemptionBufferCollateral);
 
-        (bufferTokenId,,,,) = nectra.createRedemptionBufferPosition{value: redemptionBufferCollateral}(
-            redemptionBufferCollateral, redemptionBufferDebt, manager
-        );
+        bufferTokenId = _createBuffer(redemptionBufferCollateral, redemptionBufferDebt, manager);
 
         // Unlimited approval for redemptions
         nectraUSD.approve(address(nectra), type(uint256).max);
@@ -121,10 +119,7 @@ contract RedeemProRataBaseTest is NectraBaseTest {
     function _checkDebts(uint256[] memory tokenIds, uint256[] memory expectedDebts) internal view {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             assertApproxEqRel(
-                _debt(tokenIds[i]),
-                expectedDebts[i],
-                1e11,
-                string.concat("debt mismatch for token ", _toString(i))
+                _debt(tokenIds[i]), expectedDebts[i], 1e11, string.concat("debt mismatch for token ", _toString(i))
             );
         }
     }
@@ -162,7 +157,10 @@ contract RedeemProRataBaseTest is NectraBaseTest {
         if (value == 0) return "0";
         uint256 temp = value;
         uint256 digits;
-        while (temp != 0) { digits++; temp /= 10; }
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
         bytes memory buf = new bytes(digits);
         while (value != 0) {
             digits--;

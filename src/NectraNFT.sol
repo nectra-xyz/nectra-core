@@ -45,7 +45,7 @@ contract NectraNFT is ERC721, Initializable, Ownable, UUPSUpgradeable {
     /// @param nectraAddress Address of the main Nectra contract
     function initialize(address owner, address nectraAddress) public initializer {
         _initializeOwner(owner);
-        NECTRA_ADDRESS = nectraAddress; 
+        NECTRA_ADDRESS = nectraAddress;
     }
 
     /// @notice Returns the name of the token
@@ -283,6 +283,8 @@ contract NectraNFT is ERC721, Initializable, Ownable, UUPSUpgradeable {
 
     /// @notice Authorizes the upgrade of the implementation contract
     /// @dev Required by UUPSUpgradeable to authorize upgrades
-    /// @param newImplementation The address of the new implementation contract
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    /// @dev newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _checkOwner();
+    }
 }

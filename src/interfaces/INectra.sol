@@ -48,9 +48,6 @@ interface INectra {
         external
         payable
         returns (uint256, int256, int256, uint256, uint256);
-    function createRedemptionBufferPosition(uint256 collateral, uint256 debt, address manager)
-        external
-        returns (uint256, int256, int256, uint256, uint256);
     function updatePosition(uint256 tokenId) external;
     function updateBucket(uint256 interestRate) external;
     function getSystemInterestRate() external view returns (uint256);
