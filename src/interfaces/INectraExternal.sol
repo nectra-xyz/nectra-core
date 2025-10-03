@@ -41,11 +41,13 @@ interface INectraExternal {
     function canLiquidateFull(uint256 tokenId) external view returns (bool);
     function getBucketDebt(uint256 interestRate) external view returns (uint256);
     function getGlobalDebt() external view returns (uint256);
-    function getPosition(uint256 tokenId) external view returns (uint256 collateral, uint256 debt);
+    function getPosition(uint256 tokenId)
+        external
+        view
+        returns (uint256 collateral, uint256 debt, uint256 interestRate);
     function getPositionCollateral(uint256 tokenId) external view returns (uint256);
     function getPositionDebt(uint256 tokenId) external view returns (uint256);
     function getPositionFullLiquidationPrice(uint256 tokenId) external view returns (uint256);
     function getPositionLiquidationPrice(uint256 tokenId) external view returns (uint256);
-    function getPositionOutstandingFee(uint256 tokenId) external view returns (uint256);
     function getPositionsForAddress(address owner) external view returns (PositionData[] memory);
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
@@ -13,22 +13,22 @@ contract NectraLiquidationsTest is NectraBaseTest {
     uint256[] internal tokens;
 
     function setUp() public virtual override {
-        cargs.openFeePercentage = 0; // Disable open fee for testing
+        systemParams.openFeePercentage = 0; // Disable open fee for testing
         super.setUp();
 
         uint256 tokenId;
         // Open positions with different interest rates
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 10 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 85 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 85 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
         tokens.push(tokenId);
 
-        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, 0.05 ether, "");
+        (tokenId,,,,) = nectra.modifyPosition{value: 100 ether}(0, 100 ether, 20 ether, "");
         tokens.push(tokenId);
     }
 

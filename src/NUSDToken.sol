@@ -2,21 +2,31 @@
 pragma solidity ^0.8.23;
 
 import {ERC20} from "src/lib/ERC20.sol";
+import {Ownable} from "src/lib/Ownable.sol";
+import {Initializable} from "src/lib/Initializable.sol";
+import {UUPSUpgradeable} from "src/lib/UUPSUpgradeable.sol";
 
 /// @title NUSDToken
 /// @notice ERC20 token representing the Nectra USD stablecoin
 /// @dev Extends ERC20 with minting and burning capabilities restricted to the Nectra contract
-contract NUSDToken is ERC20 {
+contract NUSDToken is ERC20, Initializable, Ownable, UUPSUpgradeable {
     string internal constant NAME = "Nectra USD";
-    string internal constant SYMBOL = "NUSD";
+    string internal constant SYMBOL = "nUSD";
 
-    address internal immutable MINTER;
+    address public MINTER;
 
     error NotMinter();
 
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initializes the token
+    /// @param owner Address of the owner of the token
     /// @param minter Address of the contract that can mint and burn tokens
-    constructor(address minter) {
+    function initialize(address owner, address minter) public initializer {
         MINTER = minter;
+        _initializeOwner(owner);
     }
 
     /// @notice Returns the name of the token
@@ -64,5 +74,18 @@ contract NUSDToken is ERC20 {
         override
     {
         super.permit(owner, spender, value, deadline, v, r, s);
+    }
+
+    /// @notice Prevent double initialization of the owner.
+    /// @dev do not remove this function during future upgrades
+    function _guardInitializeOwner() internal pure override returns (bool) {
+        return true;
+    }
+
+    /// @notice Authorizes the upgrade of the implementation contract
+    /// @dev Only the owner can upgrade the implementation contract
+    /// @dev newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _checkOwner();
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
@@ -22,9 +22,11 @@ contract NectraNFTTest is NectraBaseTest {
     function setUp() public override {
         super.setUp();
 
+        nectra.storeSystemInterestRate(0.05 ether);
+
         // create random positions as noise
         for (uint256 i = 0; i < numNoisePositions; i++) {
-            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, 0.05 ether, "");
+            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 
         // Create NFTs for Whale
@@ -32,14 +34,14 @@ contract NectraNFTTest is NectraBaseTest {
 
         for (uint256 i = 0; i < whaleNumPositions; i++) {
             vm.prank(whale);
-            (whalePositionIds[i],,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, 0.05 ether, "");
+            (whalePositionIds[i],,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         }
 
         // Create NFTs for User 2
         deal(user2, 100 ether);
 
         vm.prank(user2);
-        (positionIdUser2,,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, 0.05 ether, "");
+        (positionIdUser2,,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
     }
 
     function test_authorize_revert_if_not_owner() public {
@@ -530,8 +532,7 @@ contract NectraNFTTest is NectraBaseTest {
     function test_should_increase_list_size_when_token_is_minted() public {
         // Mint a new token
         vm.prank(whale);
-        (whalePositionIds[whaleNumPositions],,,,) =
-            nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, 0.05 ether, "");
+        (whalePositionIds[whaleNumPositions],,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         whaleNumPositions++;
 
         uint256[] memory tokenIds = nectraNFT.getTokenIdsForAddress(whale);
@@ -541,7 +542,7 @@ contract NectraNFTTest is NectraBaseTest {
 
     function test_should_increase_list_size_when_token_is_received_from_other_address() public {
         // Mint a new token
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, 0.05 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 10 ether}(0, 10 ether, 1 ether, "");
         nectraNFT.transferFrom(address(this), whale, tokenId);
         whalePositionIds[whaleNumPositions] = tokenId;
         whaleNumPositions++;

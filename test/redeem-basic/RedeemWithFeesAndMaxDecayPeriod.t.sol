@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraRedeemBaseTest} from "test/redeem/NectraRedeemBase.t.sol";
+import {RedeemBaseTest} from "test/redeem-basic/RedeemBase.t.sol";
 
-contract NectraRedeemWithFeesAndMaxDecayPeriodTest is NectraRedeemBaseTest {
+contract RedeemWithFeesAndMaxDecayPeriodTest is RedeemBaseTest {
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionDynamicFeeScalar = 1 ether;
-        cargs.redemptionFeeDecayPeriod = type(uint256).max; // Fee never decays
-        cargs.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionDynamicFeeScalar = 1 ether;
+        systemParams.redemptionFeeDecayPeriod = type(uint256).max; // Fee never decays
+        systemParams.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
         super.setUp();
     }
 
-    function test_redemption_fee_never_decays_with_max_decay_period() public {
+    function test_redeem_RedemptionFeeNeverDecaysWithMaxDecayPeriod() public {
         uint256 redeemTotal = 30 ether;
         // Get initial fee
         uint256 initialFee = nectra.getRedemptionFee(redeemTotal);

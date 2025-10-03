@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
+import {NectraLib} from "src/NectraLib.sol";
 import {Nectra, NectraBase} from "src/Nectra.sol";
 import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
-import {NectraLib} from "src/NectraLib.sol";
+
+import {ERC1967Proxy} from "src/lib/ERC1967Proxy.sol";
+
 import {OracleAggregatorMock} from "test/mocks/OracleAggregatorMock.sol";
 
 abstract contract NectraBaseTest is Test {
@@ -22,16 +25,17 @@ abstract contract NectraBaseTest is Test {
     address whale = makeAddr("whale");
     address feeRecipient = makeAddr("feeRecipient");
 
-    NectraBase.ConstructorArgs internal cargs = NectraBase.ConstructorArgs({
+    NectraBase.SystemParams internal systemParams = NectraBase.SystemParams({
         nectraNFTAddress: address(0),
         nusdTokenAddress: address(0),
         oracleAddress: address(0),
         feeRecipientAddress: feeRecipient,
         minimumCollateral: 0.1 ether,
         minimumDebt: 0.1 ether,
+        systemInterestRate: 0.0025 ether, // 0.25%
         maximumInterestRate: 1 ether,
-        minimumInterestRate: 0.005 ether, // 0.5%
-        interestRateIncrement: 0.001 ether, // 0.1%
+        minimumInterestRate: 0, // 0%
+        interestRateIncrement: 0.0001 ether, // 0.01%
         liquidationRatio: 1.2 ether,
         liquidatorRewardPercentage: 0.85 ether,
         liquidationPenaltyPercentage: 0.05 ether,
@@ -50,19 +54,78 @@ abstract contract NectraBaseTest is Test {
 
     function setUp() public virtual {
         oracle = new OracleAggregatorMock(1.2 ether);
-        nectraNFT = new NectraNFT(vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2));
-        nectraUSD = new NUSDToken(vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1));
 
-        Nectra.ConstructorArgs memory _cargs = cargs;
-        _cargs.nectraNFTAddress = address(nectraNFT);
-        _cargs.nusdTokenAddress = address(nectraUSD);
-        _cargs.oracleAddress = address(oracle);
+        // deploy nectra with the initial implementation to get an address for core
+        Nectra nectraImplementation = new Nectra();
+        ERC1967Proxy nectraProxy = new ERC1967Proxy(
+            address(nectraImplementation),
+            bytes("") // no initializer data
+        );
+        nectra = Nectra(address(nectraProxy));
 
-        nectra = new Nectra(_cargs);
+        // deploy nft
+        NectraNFT nectraNFTImplementation = new NectraNFT();
+        ERC1967Proxy nftProxy = new ERC1967Proxy(
+            address(nectraNFTImplementation),
+            abi.encodeWithSelector(
+                NectraNFT.initialize.selector,
+                address(this), // owner
+                address(nectra) // minter
+            )
+        );
+        nectraNFT = NectraNFT(address(nftProxy));
+
+        // deploy nUSD
+        NUSDToken nectraUSDImplementation = new NUSDToken();
+        ERC1967Proxy nusdProxy = new ERC1967Proxy(
+            address(nectraUSDImplementation),
+            abi.encodeWithSelector(
+                NUSDToken.initialize.selector,
+                address(this), // owner
+                address(nectra) // minter
+            )
+        );
+        nectraUSD = NUSDToken(address(nusdProxy));
+
+        // upgrade nectra to the final implementation
+        Nectra.SystemParams memory _params = systemParams;
+        _params.nectraNFTAddress = address(nectraNFT);
+        _params.nusdTokenAddress = address(nectraUSD);
+        _params.oracleAddress = address(oracle);
+
+        nectra.initialize(_params);
 
         nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 
         deal(address(this), 1_000_000 ether);
+    }
+
+    function _createPosition(address user, uint256 collateral, uint256 debt, uint256 interestRate)
+        internal
+        returns (uint256 tokenId)
+    {
+        vm.deal(user, collateral);
+
+        uint256 currentInterestRate = nectra.getSystemInterestRate();
+        nectra.storeSystemInterestRate(interestRate);
+
+        vm.prank(user);
+        (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
+
+        // restore system interest rate
+        nectra.storeSystemInterestRate(currentInterestRate);
+    }
+
+    function _createBuffer(uint256 collateral, uint256 debt, address bufferManager)
+        internal
+        returns (uint256 tokenId)
+    {
+        nectra.storeRedemptionBuffer(0, bufferManager);
+
+        vm.deal(bufferManager, bufferManager.balance + collateral);
+
+        vm.prank(bufferManager);
+        (tokenId,,,,) = nectra.modifyPosition{value: collateral}(0, int256(collateral), int256(debt), "");
     }
 
     function _checkPosition(

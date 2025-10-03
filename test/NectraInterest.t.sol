@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraBaseTest, console2} from "test/NectraBase.t.sol";
+import {NectraBaseTest, console} from "test/NectraBase.t.sol";
 
 import {NUSDToken} from "src/NUSDToken.sol";
 import {NectraNFT} from "src/NectraNFT.sol";
@@ -10,58 +10,60 @@ import {NectraLib} from "src/NectraLib.sol";
 import {OracleAggregator} from "src/OracleAggregator.sol";
 
 contract NectraInterestTest is NectraBaseTest {
+    uint256 internal defaultInterestRate = 0.1 ether;
+
     function setUp() public virtual override {
-        cargs.openFeePercentage = 0;
+        systemParams.openFeePercentage = 0;
         super.setUp();
+
+        nectra.storeSystemInterestRate(defaultInterestRate);
 
         nectraUSD.approve(address(nectra), type(uint256).max);
     }
 
     function test_interest_view_only() public {
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
         _test_interest(tokenId, false);
     }
 
     function test_interest_compounded() public {
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
         _test_interest(tokenId, true);
     }
 
     /// Test the same but with another position in the same bucket
     function test_interest_existing_compounded() public {
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
 
         _test_interest(tokenId, true);
     }
 
     /// Joining the same bucket with a position that already has interest accrued
     function test_interest_existing_already_accrued() public {
-        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
 
         vm.warp(vm.getBlockTimestamp() + 60 days);
 
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
         _test_interest(tokenId, true);
     }
 
     function test_interest_after_modification() public {
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, 0.1 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 100 ether, "");
         vm.warp(vm.getBlockTimestamp() + 7 days);
 
         // debt after 7 days = 100.1829538 ether
         assertApproxEqAbs(nectraExternal.getPositionDebt(tokenId), 100.1829538 ether, 1e11); // 7 decimals
 
         nectraUSD.approve(address(nectra), nectraExternal.getPositionDebt(tokenId) - 100 ether);
-        nectra.modifyPosition(
-            tokenId, 0 ether, -int256(nectraExternal.getPositionDebt(tokenId) - 100 ether), 0.1 ether, ""
-        );
+        nectra.modifyPosition(tokenId, 0 ether, -int256(nectraExternal.getPositionDebt(tokenId) - 100 ether), "");
 
         _test_interest(tokenId, true);
     }
 
     function test_should_accrue_interest_after_redemption() public virtual {
-        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 110 ether, 0.1 ether, "");
+        (uint256 tokenId,,,,) = nectra.modifyPosition{value: 1000 ether}(0, 1000 ether, 110 ether, "");
 
         nectra.redeem(10 ether, 0);
 

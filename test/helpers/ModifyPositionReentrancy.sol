@@ -33,12 +33,12 @@ contract ModifyPositionReentrancy {
         nectraUSD.approve(address(nectra), _debtDiff);
 
         // Pay off debt some debt and withdraw some collateral to trigger reentrancy.
-        nectra.modifyPosition(_tokenId, -1 ether, -int256(_debtDiff / 2), _interestRate, "");
+        nectra.modifyPosition(_tokenId, -1 ether, -int256(_debtDiff / 2), "");
     }
 
     receive() external payable {
         // Re-enter modifyPosition attempt to withdraw full collateral amount, this should
         // still succeed because the withdraw amount is capped to what is available in the position.
-        nectra.modifyPosition(tokenId, -int256(collateral), -int256(debt / 2), interestRate, "");
+        nectra.modifyPosition(tokenId, -int256(collateral), -int256(debt / 2), "");
     }
 }

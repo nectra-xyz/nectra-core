@@ -2,11 +2,14 @@
 pragma solidity ^0.8.23;
 
 import {ERC721} from "src/lib/ERC721.sol";
+import {Ownable} from "src/lib/Ownable.sol";
+import {Initializable} from "src/lib/Initializable.sol";
+import {UUPSUpgradeable} from "src/lib/UUPSUpgradeable.sol";
 
 /// @title NectraNFT
 /// @notice ERC721 token representing positions in the Nectra protocol
 /// @dev Extends ERC721 with permission system and enumerable balance tracking
-contract NectraNFT is ERC721 {
+contract NectraNFT is ERC721, Initializable, Ownable, UUPSUpgradeable {
     enum Permission {
         Borrow,
         Withdraw,
@@ -22,7 +25,7 @@ contract NectraNFT is ERC721 {
     string internal constant NAME = "Nectra Position";
     string internal constant SYMBOL = "NTP";
 
-    address internal immutable NECTRA_ADDRESS;
+    address internal NECTRA_ADDRESS;
 
     uint256 internal _latestTokenId;
 
@@ -33,8 +36,15 @@ contract NectraNFT is ERC721 {
     mapping(uint256 tokenId => uint256) private _ownedTokensIndex;
     mapping(uint256 tokenId => uint256) private _allTokensIndex;
 
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initializes the token
+    /// @param owner Address of the owner of the token
     /// @param nectraAddress Address of the main Nectra contract
-    constructor(address nectraAddress) {
+    function initialize(address owner, address nectraAddress) public initializer {
+        _initializeOwner(owner);
         NECTRA_ADDRESS = nectraAddress;
     }
 
@@ -263,5 +273,18 @@ contract NectraNFT is ERC721 {
             tokenIds[i] = _ownedTokens[owner][i];
         }
         return tokenIds;
+    }
+
+    /// @notice Prevent double initialization of the owner.
+    /// @dev do not remove this function during future upgrades
+    function _guardInitializeOwner() internal pure override returns (bool) {
+        return true;
+    }
+
+    /// @notice Authorizes the upgrade of the implementation contract
+    /// @dev Required by UUPSUpgradeable to authorize upgrades
+    /// @dev newImplementation The address of the new implementation contract
+    function _authorizeUpgrade(address /*newImplementation*/ ) internal view override {
+        _checkOwner();
     }
 }

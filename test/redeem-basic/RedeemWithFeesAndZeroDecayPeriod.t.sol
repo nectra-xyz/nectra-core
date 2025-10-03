@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {NectraRedeemBaseTest} from "test/redeem/NectraRedeemBase.t.sol";
+import {RedeemBaseTest} from "test/redeem-basic/RedeemBase.t.sol";
 
-contract NectraRedeemWithFeesAndZeroDecayPeriodTest is NectraRedeemBaseTest {
+contract RedeemWithFeesAndZeroDecayPeriodTest is RedeemBaseTest {
     function setUp() public virtual override {
-        cargs.redemptionBaseFee = 0.005 ether; // 0.5% base fee
-        cargs.redemptionDynamicFeeScalar = 1 ether;
-        cargs.redemptionFeeDecayPeriod = 0 hours; // Fee decays to base fee instantly
-        cargs.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
+        systemParams.redemptionBaseFee = 0.005 ether; // 0.5% base fee
+        systemParams.redemptionDynamicFeeScalar = 1 ether;
+        systemParams.redemptionFeeDecayPeriod = 0 hours; // Fee decays to base fee instantly
+        systemParams.redemptionFeeTreasuryThreshold = 0 ether; // Full fee sent to treasury
         super.setUp();
     }
 
-    function test_redemption_fee_decay_to_base_fee() public {
+    function test_redeem_RedemptionFeeDecayToBaseFee() public {
         uint256 redeemTotal = 30 ether;
         // Get initial fee
         uint256 initialFee = nectra.getRedemptionFee(redeemTotal);
@@ -24,7 +24,8 @@ contract NectraRedeemWithFeesAndZeroDecayPeriodTest is NectraRedeemBaseTest {
             // Note: Open a new position to restore total debt, this test case is strictly measuring the decay of the fee
             // even as redemption volume increase. If the total debt is not restored, the fee will increase due to the ratio
             // between total debt and the redemption amount increasing and seem as if the fee is not decaying.
-            nectra.modifyPosition{value: 2 ether}(0, 2 ether, 1 ether, 0.5 ether, "");
+            nectra.storeSystemInterestRate(0.5 ether);
+            nectra.modifyPosition{value: 2 ether}(0, 2 ether, 1 ether, "");
             assertEq(
                 nectra.getRedemptionFee(1 ether),
                 redemptionFeeBefore,
