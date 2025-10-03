@@ -11,7 +11,7 @@ import {UUPSUpgradeable} from "src/lib/UUPSUpgradeable.sol";
 /// @dev Extends ERC20 with minting and burning capabilities restricted to the Nectra contract
 contract NUSDToken is ERC20, Initializable, Ownable, UUPSUpgradeable {
     string internal constant NAME = "Nectra USD";
-    string internal constant SYMBOL = "NUSD";
+    string internal constant SYMBOL = "nUSD";
 
     address public MINTER;
 

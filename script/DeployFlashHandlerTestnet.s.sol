@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {SatsumaHandler} from "src/auxiliary/SatsumaHandler.sol";
-import {NectraExternal} from "src/auxiliary/NectraExternal.sol";
 import {NectraFlashHandler} from "src/auxiliary/NectraFlashHandler.sol";
 
 import {Script} from "forge-std/Script.sol";
@@ -13,9 +12,10 @@ contract DeployFlashHandlerTestnet is Script {
     address public deployer = vm.addr(deployerPrivateKey);
 
     // Nectra Deployment
-    address public nUSD = 0x9B28B690550522608890C3C7e63c0b4A7eBab9AA;
-    address public nectra = 0x6cDC594d5A135d0307aee3449023A42385422355;
-    address public nectraNFT = 0xcfb6737893A18D10936bc622BCe04fc7f50776a0;
+    address public nUSD = 0x0Fe56deAdC50e29441063dF84226346a99220118;
+    address public nectra = 0x1EC6A6A7c3f132a08E3e708bDb6623D26Cb35d3d;
+    address public nectraNFT = 0x83b196CDb9464870EbA5AdE7769fF66Ac38F0C30;
+    address public nectraExternal = 0x5a0c0344Fe1A92342d0e88207ED29bF2369b82E0;
     address public oracleAggregator = 0x4c9aC40e2ee46eDD1626EF835F926D5a68182056;
 
     // Satsuma Deployment
@@ -23,7 +23,6 @@ contract DeployFlashHandlerTestnet is Script {
     address public quoter = 0xa77aD9f635a3FB3bCCC5E6d1A87cB269746Aba17;
     address public WCBTC = 0x8d0c9d1c17aE5e40ffF9bE350f57840E9E66Cd93;
 
-    NectraExternal public nectraExternal;
     SatsumaHandler public satsumaHandler;
     NectraFlashHandler public nectraFlashHandler;
 
@@ -31,20 +30,13 @@ contract DeployFlashHandlerTestnet is Script {
         vm.startBroadcast(deployerPrivateKey);
         console.log("Deployer:     ", deployer);
 
-        // Deploy new NectraExternal
-        // nectraExternal = new NectraExternal(nectra, nectraNFT);
-        // TODO: Change to the actual address
-        nectraExternal = NectraExternal(0x0000000000000000000000000000000000000000);
-
         // Deploy the SatsumaDex Handler
         satsumaHandler = new SatsumaHandler(swapRouter, quoter, nUSD, WCBTC);
 
         // Deploy NectraFlashHandler
-        nectraFlashHandler = new NectraFlashHandler(
-            nUSD, nectra, nectraNFT, address(nectraExternal), oracleAggregator, payable(satsumaHandler)
-        );
+        nectraFlashHandler =
+            new NectraFlashHandler(nUSD, nectra, nectraNFT, nectraExternal, oracleAggregator, payable(satsumaHandler));
 
-        console.log("NectraExternal: ", address(nectraExternal));
         console.log("SatsumaHandler: ", address(satsumaHandler));
         console.log("NectraFlashHandler: ", address(nectraFlashHandler));
 

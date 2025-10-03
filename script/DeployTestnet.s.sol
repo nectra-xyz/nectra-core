@@ -95,9 +95,15 @@ contract DeployTestnet is Script {
 
         NectraExternal nectraExternal = new NectraExternal(address(nectra), address(nectraNFT));
 
+        console.log("Proxy Addresses:");
         console.log("Nectra:           ", address(nectra));
         console.log("NectraUSD:        ", address(nectraUSD));
         console.log("NectraNFT:        ", address(nectraNFT));
+        console.log("Implementation Addresses:");
+        console.log("Nectra:           ", address(nectraImplementation));
+        console.log("NectraUSD:        ", address(nectraUSDImplementation));
+        console.log("NectraNFT:        ", address(nectraNFTImplementation));
+        console.log("Other Addresses:");
         console.log("NectraExternal:   ", address(nectraExternal));
         console.log("OracleAggregator: ", address(oracleAggregator));
         vm.stopBroadcast();
